@@ -1,11 +1,12 @@
 # From: http://allandenot.com/devops/2015/01/31/provisioning-ec2-hosts-with-ansible.html
-ec2_keypair: ""
-ec2_security_group: ""
+ec2_keypair: ""  # Key pair name
+ec2_security_group: ""  # Group ID of your security group
 ec2_instance_type: "m1.small"
-ec2_image: ""
-ec2_subnet_ids: ['']
+ec2_image: ""  # an AMI ID
+ec2_subnet_ids: ['']  # VPC ID
 ec2_region: "us-west-2"
 ec2_tag_Name: "AWS Ops"
 ec2_tag_Type: "Application"
 ec2_tag_Environment: "messing-around"
+ec2_tag_ResponsibleParty: ""  # username
 ec2_volume_size: 16
