@@ -1,1 +1,1 @@
-ec2_vars/webservers.yml
+ec2_vars/appservers.yml
