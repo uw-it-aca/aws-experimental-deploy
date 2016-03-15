@@ -1,7 +1,7 @@
 # From: http://allandenot.com/devops/2015/01/31/provisioning-ec2-hosts-with-ansible.html
 ec2_keypair: ""  # Key pair name
 ec2_security_group: ""  # Group ID of your security group
-ec2_instance_type: "m1.small"
+ec2_instance_type: "t1.micro"
 ec2_image: ""  # an AMI ID
 ec2_subnet_ids: ['']  # VPC ID
 ec2_region: "us-west-2"
