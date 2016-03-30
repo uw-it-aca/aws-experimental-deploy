@@ -15,8 +15,8 @@ import os
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 def main():
-    playbook_path = os.path.join(BASE_DIR, 'aws', 'provision-ec2.yml')
-    inventory_path = os.path.join(BASE_DIR, 'aws', 'hosts', 'localhost')
+    playbook_path = os.path.join(BASE_DIR, 'aca-aws', 'provision-ec2.yml')
+    inventory_path = os.path.join(BASE_DIR, 'aca-aws', 'hosts', 'localhost')
     print playbook_path
     print inventory_path
 
