@@ -43,8 +43,8 @@ if __name__ == "__main__":
     project = parser.parse_args()
     print project
 
-    playbook_path = os.path.join(BASE_DIR, 'aws', 'provision-ec2.yml')
-    inventory_path = os.path.join(BASE_DIR, 'aws', 'hosts', 'localhost')
+    playbook_path = os.path.join(BASE_DIR, 'aca-aws', 'provision-ec2.yml')
+    inventory_path = os.path.join(BASE_DIR, 'aca-aws', 'hosts', 'localhost')
     role = 'appservers'
 
     run_playbook(playbook_path, inventory_path, role)
