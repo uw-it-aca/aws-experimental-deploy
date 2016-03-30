@@ -17,12 +17,7 @@ import os
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-def launch_ec2():
-
-    playbook_path = os.path.join(BASE_DIR, 'aws', 'provision-ec2.yml')
-    inventory_path = os.path.join(BASE_DIR, 'aws', 'hosts', 'localhost')
-    print playbook_path
-    print inventory_path
+def run_playbook(playbook_path, inventory_path, role):
 
     utils.VERBOSITY = 0
     playbook_cb = callbacks.PlaybookCallbacks(verbose=utils.VERBOSITY)
@@ -35,11 +30,9 @@ def launch_ec2():
         callbacks=playbook_cb,
         runner_callbacks=runner_cb,
         stats=stats,
-        extra_vars = {'type': 'appservers'}
+        extra_vars = {'type': role}
     )
     results = deploy_ec2.run()
-    print '-'*79
-    print results
 
 
 if __name__ == "__main__":
@@ -50,4 +43,8 @@ if __name__ == "__main__":
     project = parser.parse_args()
     print project
 
-    launch_ec2()
+    playbook_path = os.path.join(BASE_DIR, 'aws', 'provision-ec2.yml')
+    inventory_path = os.path.join(BASE_DIR, 'aws', 'hosts', 'localhost')
+    role = 'appservers'
+
+    run_playbook(playbook_path, inventory_path, role)
