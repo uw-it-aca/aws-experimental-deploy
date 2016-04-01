@@ -1,0 +1,24 @@
+---
+  - hosts: localhost
+    connection: local
+    gather_facts: false
+    pre_tasks:
+      - include_vars: ec2_vars/{{ type }}.yml
+
+    tasks:
+      - name: Provision Multizone RDS Instance
+        local_action:
+          module: rds
+          command: create
+          db_engine: MySQL
+          db_name: "{{ rds_db_name }}"
+          instance_name: "{{ rds_instance_name }}"
+          instance_type: "{{ rds_instance_type }}"
+          size: "{{ rds_initial_storage }}"
+          multi_zone: yes
+          password: "{{ rds_master_password }}"
+          username: "{{ rds_master_username }}"
+          region: "{{ rds_region }}"
+          vpc_security_groups: "{{ rds_security_group }}"
+          tags: '{"Project":"{{rds_tag_Project}}","Role":"{{rds_tag_Role}}","Use":"{{rds_tag_Use}}","ResponsibleParty":"{{rds_tag_ResponsibleParty}}"}'
+          wait: true

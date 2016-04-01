@@ -1,0 +1,15 @@
+rds_security_group: ""  # Group ID of your security group, eg sg-12343
+rds_db_name: "" # The name of the db your app connects to
+rds_instance_name: "" # The unique name for your RDS
+rds_master_username: ""
+rds_master_password: ""
+rds_instance_type: "db.t2.micro"
+rds_region: "us-west-2"
+rds_tag_Name: "AWS Ops"
+rds_tag_Type: "Application"
+rds_tag_Environment: "messing-around"
+rds_tag_Project: ""
+rds_tag_Role: "db"
+rds_tag_ResponsibleParty: ""  # username
+rds_tag_Use: ""
+rds_initial_storage: 10

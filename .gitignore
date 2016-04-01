@@ -1,1 +1,17 @@
 ec2_vars/appservers.yml
+ec2_vars/infrastructure.yml
+
+# Python stuff
+*.pyc
+
+# virtualenv stuff
+/lib
+/local
+/include
+/bin
+
+# pip stuff
+/pip-selfcheck.json
+
+# vim stuff
+*.swp
