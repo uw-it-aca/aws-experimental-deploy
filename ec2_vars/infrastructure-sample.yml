@@ -1,3 +1,8 @@
+elasticache_region: ""
+elasticache_instance_name: ""
+elasticache_security_group: "" # Group ID of your security group, eg sg-12343
+
+
 rds_security_group: ""  # Group ID of your security group, eg sg-12343
 rds_db_name: "" # The name of the db your app connects to
 rds_instance_name: "" # The unique name for your RDS

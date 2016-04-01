@@ -6,6 +6,19 @@
       - include_vars: ec2_vars/{{ type }}.yml
 
     tasks:
+      - name: Provision elasticache
+        local_action:
+          module: elasticache
+          state: present
+          engine: memcached
+          region: "{{ elasticache_region }}"
+          cache_port: 11211
+          num_nodes: 1
+          name: "{{ elasticache_instance_name }}"
+          cache_security_groups: []
+          security_group_ids: "{{ elasticache_security_group }}"
+          wait: true
+
       - name: Provision Multizone RDS Instance
         local_action:
           module: rds
