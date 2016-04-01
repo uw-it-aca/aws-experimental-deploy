@@ -1,1 +1,4 @@
+*.pyc
+
 ec2_vars/appservers.yml
+settings.py

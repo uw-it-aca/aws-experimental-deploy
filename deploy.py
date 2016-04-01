@@ -12,10 +12,14 @@ from ansible.inventory import Inventory
 from ansible import callbacks
 from ansible import utils
 
+from boto import ec2
+
 import argparse
 import os
+import settings
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
 
 def run_playbook(playbook_path, inventory_path, role):
 
@@ -34,17 +38,32 @@ def run_playbook(playbook_path, inventory_path, role):
     )
     results = deploy_ec2.run()
 
+def inventory_for_project(args):
+    ec2conn = ec2.connect_to_region(settings.AWS_REGION,
+                                    aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+                                    aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY)
+    all_reservations = ec2conn.get_all_reservations()
+    reservations = [i for a in all_reservations for i in a.instances if 'Project' in i.tags and args.project in i.tags['Project']]
+    output = "{"
+    for i in reservations:
+        output += "'{0}' : [ '{1}' ],".format(i.private_dns_name, i.private_ip_address)
+    output +="}"
+    return output
+
 
 if __name__ == "__main__":
     # In a django management command, the parser is already instantiated.
     parser = argparse.ArgumentParser(description='The project to deploy.')
 
     parser.add_argument('project', nargs='?')
-    project = parser.parse_args()
-    print project
+    args = parser.parse_args()
 
     playbook_path = os.path.join(BASE_DIR, 'aca-aws', 'provision-ec2.yml')
     inventory_path = os.path.join(BASE_DIR, 'aca-aws', 'hosts', 'localhost')
     role = 'appservers'
-
     run_playbook(playbook_path, inventory_path, role)
+
+    playbook_path = os.path.join(BASE_DIR, 'aca-aws', 'simple.yml')
+    inv = inventory_for_project(args)
+    print inv
+    #run_playbook(playbook_path, inv, role)
