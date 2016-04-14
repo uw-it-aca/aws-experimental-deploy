@@ -13,6 +13,7 @@ class Options(object):
     """
     Options class to replace Ansible OptParser
     """
+
     def __init__(self, verbosity=1, inventory=None, listhosts=None, subset=None, module_paths=None, extra_vars=None, forks=None, ask_vault_pass=None, vault_password_files=None, new_vault_password_file=None, output_file=None, tags=None, skip_tags=None, one_line=None, tree=None, ask_sudo_pass=None, ask_su_pass=None, sudo=None, sudo_user=None, become=None, become_method=None, become_user=None, become_ask_pass=None, ask_pass=None, private_key_file=None, remote_user=None, connection=None, timeout=None, ssh_common_args=None, sftp_extra_args=None, scp_extra_args=None, ssh_extra_args=None, poll_interval=None, seconds=None, check=None, syntax=None, diff=None, force_handlers=None, flush_cache=None, listtasks=None, listtags=None, module_path=None):
         self.verbosity = verbosity
         self.inventory = inventory
@@ -75,7 +76,7 @@ class Runner(object):
         # Set global verbosity
         self.display = Display()
         self.display.verbosity = self.options.verbosity
-        # Executor appears to have it's own 
+        # Executor appears to have it's own
         # verbosity object/setting as well
         playbook_executor.verbosity = self.options.verbosity
 
@@ -84,12 +85,12 @@ class Runner(object):
 
         # Gets data from YAML/JSON files
         self.loader = DataLoader()
-        #self.loader.set_vault_password(os.environ['VAULT_PASS'])
+        # self.loader.set_vault_password(os.environ['VAULT_PASS'])
 
         # All the variables from all the various places
         self.variable_manager = VariableManager()
         self.variable_manager.extra_vars = self.run_data
-        self.variable_manager.verbosity=verbosity
+        self.variable_manager.verbosity = verbosity
 
         # Parse hosts, I haven't found a good way to
         # pass hosts in without using a parsed template :(
@@ -101,15 +102,16 @@ class Runner(object):
         self.hosts.close()
 
         # This was my attempt to pass in hosts directly.
-        # 
+        #
         # Also Note: In py2.7, "isinstance(foo, str)" is valid for
-        #            latin chars only. Luckily, hostnames are 
+        #            latin chars only. Luckily, hostnames are
         #            ascii-only, which overlaps latin charset
-        ## if isinstance(hostnames, str):
+        # if isinstance(hostnames, str):
         ##     hostnames = {"customers": {"hosts": [hostnames]}}
 
         # Set inventory, using most of above objects
-        self.inventory = Inventory(loader=self.loader, variable_manager=self.variable_manager, host_list=self.hosts.name)
+        self.inventory = Inventory(
+            loader=self.loader, variable_manager=self.variable_manager, host_list=self.hosts.name)
         self.variable_manager.set_inventory(self.inventory)
 
         # Playbook to run. Assumes it is
@@ -119,11 +121,11 @@ class Runner(object):
 
         # Setup playbook executor, but don't run until run() called
         self.pbex = playbook_executor.PlaybookExecutor(
-            playbooks=[playbook], 
-            inventory=self.inventory, 
+            playbooks=[playbook],
+            inventory=self.inventory,
             variable_manager=self.variable_manager,
-            loader=self.loader, 
-            options=self.options, 
+            loader=self.loader,
+            options=self.options,
             passwords=None
         )
 
@@ -140,14 +142,14 @@ class Runner(object):
             if t['unreachable'] > 0 or t['failures'] > 0:
                 run_success = False
 
-        #TODO: consider implementing a similar logging cb
+        # TODO: consider implementing a similar logging cb
 
         # Dirty hack to send callback to save logs with data we want
         # Note that function "record_logs" is one I created and put into
         # the playbook callback file
-        #self.pbex._tqm.send_callback(
-        #    'record_logs', 
-        #    user_id=self.run_data['user_id'], 
+        # self.pbex._tqm.send_callback(
+        #    'record_logs',
+        #    user_id=self.run_data['user_id'],
         #    success=run_success
         #)
 

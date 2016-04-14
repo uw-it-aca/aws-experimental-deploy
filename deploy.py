@@ -32,17 +32,19 @@ def run_playbook(playbook_path, inventory_path, role):
     utils.VERBOSITY = 0
     playbook_cb = callbacks.PlaybookCallbacks(verbose=utils.VERBOSITY)
     stats = callbacks.AggregateStats()
-    runner_cb = callbacks.PlaybookRunnerCallbacks(stats, verbose=utils.VERBOSITY)
+    runner_cb = callbacks.PlaybookRunnerCallbacks(
+        stats, verbose=utils.VERBOSITY)
 
     deploy_ec2 = Playbook(
-        playbook = playbook_path,
+        playbook=playbook_path,
         host_list=inventory_path,
         callbacks=playbook_cb,
         runner_callbacks=runner_cb,
         stats=stats,
-        extra_vars = {'type': role}
+        extra_vars={'type': role}
     )
     results = deploy_ec2.run()
+
 
 def v2_run_playbook(hostnames, connection, playbook_path, inventory_path, role, private_key_file=None):
     run_data = {
@@ -66,11 +68,13 @@ def inventory_for_project(args):
                                     aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
                                     aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY)
     all_reservations = ec2conn.get_all_reservations()
-    reservations = [i for a in all_reservations for i in a.instances if 'Project' in i.tags and args.project in i.tags['Project']]
+    reservations = [
+        i for a in all_reservations for i in a.instances if 'Project' in i.tags and args.project in i.tags['Project']]
     output = "{"
     for i in reservations:
-        output += "'{0}' : [ '{1}' ],".format(i.private_dns_name, i.private_ip_address)
-    output +="}"
+        output += "'{0}' : [ '{1}' ],".format(
+            i.private_dns_name, i.private_ip_address)
+    output += "}"
     return output
 
 
