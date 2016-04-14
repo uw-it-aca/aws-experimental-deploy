@@ -7,7 +7,10 @@
 """
 # DO NOT change the order of these imports, there's a circular dependency in
 # ansible 1.9 that will cause things to break.
-from ansible.playbook import Playbook
+try:
+    from ansible.playbook import Playbook
+except:
+    from ansible.playbook import PlayBook
 from ansible.inventory import Inventory
 try:
     from ansible import callbacks
