@@ -32,7 +32,7 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 def run_playbook(playbook_path, inventory_path, role):
 
-    utils.VERBOSITY = 0
+    utils.VERBOSITY = 4
     playbook_cb = callbacks.PlaybookCallbacks(verbose=utils.VERBOSITY)
     stats = callbacks.AggregateStats()
     runner_cb = callbacks.PlaybookRunnerCallbacks(
@@ -60,7 +60,7 @@ def v2_run_playbook(hostnames, connection, playbook_path, inventory_path, role, 
         hostnames=hostnames,
         playbook=playbook_path,
         run_data=run_data,
-        verbosity=3,
+        verbosity=4,
     )
 
     stats = runner.run()
@@ -73,11 +73,10 @@ def inventory_for_project(args):
     all_reservations = ec2conn.get_all_reservations()
     reservations = [
         i for a in all_reservations for i in a.instances if 'Project' in i.tags and args.project in i.tags['Project']]
-    output = "{"
+    output = ""
     for i in reservations:
-        output += "'{0}' : [ '{1}' ],".format(
-            i.private_dns_name, i.private_ip_address)
-    output += "}"
+        output += "{0}\n".format(
+            i.public_dns_name)
     return output
 
 
@@ -90,11 +89,12 @@ if __name__ == "__main__":
 
     playbook_path = os.path.join(BASE_DIR, 'aca-aws', 'provision-ec2.yml')
     inventory_path = os.path.join(BASE_DIR, 'aca-aws', 'hosts', 'localhost')
-    host = 'localhost'  # This doesn't take a list yet
+    host = 'localhost'
     role = 'appservers'
     v2_run_playbook(host, 'local', playbook_path, inventory_path, role)
 
     playbook_path = os.path.join(BASE_DIR, 'aca-aws', 'simple.yml')
-    inv = inventory_for_project(args)
-    print inv
-    #run_playbook(playbook_path, inv, role)
+    hosts = inventory_for_project(args)
+    private_key_file = settings.AWS_PRIVATE_KEY_FILE
+    print hosts
+    v2_run_playbook(hosts, 'ssh', playbook_path, hosts, role, private_key_file)

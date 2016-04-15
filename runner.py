@@ -14,7 +14,7 @@ class Options(object):
     Options class to replace Ansible OptParser
     """
 
-    def __init__(self, verbosity=1, inventory=None, listhosts=None, subset=None, module_paths=None, extra_vars=None, forks=None, ask_vault_pass=None, vault_password_files=None, new_vault_password_file=None, output_file=None, tags=None, skip_tags=None, one_line=None, tree=None, ask_sudo_pass=None, ask_su_pass=None, sudo=None, sudo_user=None, become=None, become_method=None, become_user=None, become_ask_pass=None, ask_pass=None, private_key_file=None, remote_user=None, connection=None, timeout=None, ssh_common_args=None, sftp_extra_args=None, scp_extra_args=None, ssh_extra_args=None, poll_interval=None, seconds=None, check=None, syntax=None, diff=None, force_handlers=None, flush_cache=None, listtasks=None, listtags=None, module_path=None):
+    def __init__(self, verbosity=4, inventory=None, listhosts=None, subset=None, module_paths=None, extra_vars=None, forks=None, ask_vault_pass=None, vault_password_files=None, new_vault_password_file=None, output_file=None, tags=None, skip_tags=None, one_line=None, tree=None, ask_sudo_pass=None, ask_su_pass=None, sudo=None, sudo_user=None, become=None, become_method=None, become_user=None, become_ask_pass=None, ask_pass=None, private_key_file=None, remote_user=None, connection=None, timeout=None, ssh_common_args=None, sftp_extra_args=None, scp_extra_args=None, ssh_extra_args=None, poll_interval=None, seconds=None, check=None, syntax=None, diff=None, force_handlers=None, flush_cache=None, listtasks=None, listtags=None, module_path=None):
         self.verbosity = verbosity
         self.inventory = inventory
         self.listhosts = listhosts
@@ -61,12 +61,14 @@ class Options(object):
 
 class Runner(object):
 
-    def __init__(self, connection, private_key_file, hostnames, playbook, run_data, verbosity=1):
+    def __init__(self, connection, private_key_file, hostnames, playbook, run_data, verbosity=4):
 
         self.run_data = run_data
 
         self.options = Options()
         self.options.private_key_file = private_key_file
+        self.options.remote_user = "ubuntu"
+        self.options.ssh_extra_args = "-vvvv -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null"
         self.options.verbosity = verbosity
         self.options.connection = connection
         #self.options.become = True
@@ -91,6 +93,8 @@ class Runner(object):
         self.variable_manager = VariableManager()
         self.variable_manager.extra_vars = self.run_data
         self.variable_manager.verbosity = verbosity
+        self.variable_manager.verbosity = 4
+        self.variable_manager.ssh_extra_args = "-vvvv -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null"
 
         # Parse hosts, I haven't found a good way to
         # pass hosts in without using a parsed template :(
