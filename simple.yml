@@ -3,4 +3,4 @@
   
   tasks:
   - name: touch a file to prove we were here
-    file: path=/home/ubuntu/hello.txt
+    shell: echo "Hello world" > hello.txt
