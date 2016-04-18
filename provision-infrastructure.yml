@@ -6,6 +6,24 @@
       - include_vars: ec2_vars/{{ type }}.yml
 
     tasks:
+      - name: Create VPC
+        local_action:
+          module: ec2_vpc
+          region: "{{ elasticache_region }}"
+          internet_gateway: yes
+          state: present
+          cidr_block: 10.1.0.0/16
+          resource_tags: '{"Project":"{{rds_tag_Project}}","Role":"{{rds_tag_Role}}","Use":"{{rds_tag_Use}}","ResponsibleParty":"{{rds_tag_ResponsibleParty}}"}'
+          subnets:
+            - cidr: 10.1.5.0/24
+              az: us-west-2a
+              resource_tags: '{"Project":"{{rds_tag_Project}}","Role":"{{rds_tag_Role}}","Use":"{{rds_tag_Use}}","ResponsibleParty":"{{rds_tag_ResponsibleParty}}"}'
+              register: db_subnet
+        register: vpc
+
+      - debug: "VPC: {{ vpc }}"
+      - debug: "Subnet: {{ db_subnet }}"
+
       - name: Provision elasticache
         local_action:
           module: elasticache
@@ -17,6 +35,7 @@
           name: "{{ elasticache_instance_name }}"
           cache_security_groups: []
           security_group_ids: "{{ elasticache_security_group }}"
+          tags: '{"Project":"{{rds_tag_Project}}","Role":"{{rds_tag_Role}}","Use":"{{rds_tag_Use}}","ResponsibleParty":"{{rds_tag_ResponsibleParty}}"}'
           wait: true
 
       - name: Provision Multizone RDS Instance
@@ -32,6 +51,7 @@
           password: "{{ rds_master_password }}"
           username: "{{ rds_master_username }}"
           region: "{{ rds_region }}"
+          subnet: "{{ db_subnet }}"
           vpc_security_groups: "{{ rds_security_group }}"
           tags: '{"Project":"{{rds_tag_Project}}","Role":"{{rds_tag_Role}}","Use":"{{rds_tag_Use}}","ResponsibleParty":"{{rds_tag_ResponsibleParty}}"}'
           wait: true
