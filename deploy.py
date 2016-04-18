@@ -6,16 +6,9 @@
     This borrows heavily from https://serversforhackers.com/running-ansible-programmatically
 """
 # DO NOT change the order of these imports, there's a circular dependency in
-# ansible 1.9 that will cause things to break.
-try:
-    from ansible.playbook import Playbook
-except:
-    from ansible.playbook import PlayBook
+# ansible 1.9 that will cause things to break
+from ansible.playbook import Playbook
 from ansible.inventory import Inventory
-try:
-    from ansible import callbacks
-except:
-    pass
 from ansible import utils
 
 # v2
@@ -30,29 +23,15 @@ import settings
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
-def run_playbook(playbook_path, inventory_path, role):
-
-    utils.VERBOSITY = 4
-    playbook_cb = callbacks.PlaybookCallbacks(verbose=utils.VERBOSITY)
-    stats = callbacks.AggregateStats()
-    runner_cb = callbacks.PlaybookRunnerCallbacks(
-        stats, verbose=utils.VERBOSITY)
-
-    deploy_ec2 = Playbook(
-        playbook=playbook_path,
-        host_list=inventory_path,
-        callbacks=playbook_cb,
-        runner_callbacks=runner_cb,
-        stats=stats,
-        extra_vars={'type': role}
-    )
-    results = deploy_ec2.run()
-
-
 def v2_run_playbook(hostnames, connection, playbook_path, inventory_path, role, private_key_file=None):
     run_data = {
         'type': role
     }
+
+    # The playbooks can require env set here :(
+    if "AWS_ACCESS_KEY_ID" not in os.environ:
+        os.environ['AWS_ACCESS_KEY_ID'] = settings.AWS_ACCESS_KEY_ID
+        os.environ['AWS_SECRET_ACCESS_KEY'] = settings.AWS_SECRET_ACCESS_KEY
 
     runner = Runner(
         connection=connection,
@@ -60,7 +39,7 @@ def v2_run_playbook(hostnames, connection, playbook_path, inventory_path, role, 
         hostnames=hostnames,
         playbook=playbook_path,
         run_data=run_data,
-        verbosity=4,
+        verbosity=8,
     )
 
     stats = runner.run()
@@ -97,4 +76,5 @@ if __name__ == "__main__":
     hosts = inventory_for_project(args)
     private_key_file = settings.AWS_PRIVATE_KEY_FILE
     print hosts
+
     v2_run_playbook(hosts, 'ssh', playbook_path, hosts, role, private_key_file)

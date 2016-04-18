@@ -14,15 +14,120 @@
           state: present
           cidr_block: 10.1.0.0/16
           resource_tags: '{"Project":"{{rds_tag_Project}}","Role":"{{rds_tag_Role}}","Use":"{{rds_tag_Use}}","ResponsibleParty":"{{rds_tag_ResponsibleParty}}"}'
-          subnets:
-            - cidr: 10.1.5.0/24
-              az: us-west-2a
-              resource_tags: '{"Project":"{{rds_tag_Project}}","Role":"{{rds_tag_Role}}","Use":"{{rds_tag_Use}}","ResponsibleParty":"{{rds_tag_ResponsibleParty}}"}'
-              register: db_subnet
         register: vpc
 
-      - debug: "VPC: {{ vpc }}"
-      - debug: "Subnet: {{ db_subnet }}"
+      - debug: msg="VPC - {{ vpc }}"
+      - debug: msg="VPC ID - {{ vpc.vpc.id }}"
+
+      - name: Create Elasticache subnet in AZ1
+        local_action:
+          module: ec2_vpc_subnet
+          region: "{{ elasticache_region }}"
+          az: "{{ availability_zone1 }}"
+          state: present
+          vpc_id: "{{ vpc.vpc.id }}"
+          resource_tags: '{"Project":"{{rds_tag_Project}}","Role":"{{rds_tag_Role}}","Use":"{{rds_tag_Use}}","ResponsibleParty":"{{rds_tag_ResponsibleParty}}"}'
+          cidr: 10.1.4.0/24
+        register: elasticache_subnet1
+
+      - name: Create Elasticache subnet in AZ2
+        local_action:
+          module: ec2_vpc_subnet
+          region: "{{ elasticache_region }}"
+          az: "{{ availability_zone2 }}"
+          state: present
+          vpc_id: "{{ vpc.vpc.id }}"
+          resource_tags: '{"Project":"{{rds_tag_Project}}","Role":"{{rds_tag_Role}}","Use":"{{rds_tag_Use}}","ResponsibleParty":"{{rds_tag_ResponsibleParty}}"}'
+          cidr: 10.1.3.0/24
+        register: elasticache_subnet2
+
+      - name: Create DB subnet1
+        local_action:
+          module: ec2_vpc_subnet
+          region: "{{ elasticache_region }}"
+          az: "{{ availability_zone1 }}"
+          state: present
+          vpc_id: "{{ vpc.vpc.id }}"
+          resource_tags: '{"Project":"{{rds_tag_Project}}","Role":"{{rds_tag_Role}}","Use":"{{rds_tag_Use}}","ResponsibleParty":"{{rds_tag_ResponsibleParty}}"}'
+          cidr: 10.1.5.0/24
+        register: db_subnet1
+
+      - name: Create DB subnet2
+        local_action:
+          module: ec2_vpc_subnet
+          region: "{{ elasticache_region }}"
+          az: "{{ availability_zone2 }}"
+          state: present
+          vpc_id: "{{ vpc.vpc.id }}"
+          resource_tags: '{"Project":"{{rds_tag_Project}}","Role":"{{rds_tag_Role}}","Use":"{{rds_tag_Use}}","ResponsibleParty":"{{rds_tag_ResponsibleParty}}"}'
+          cidr: 10.1.6.0/24
+        register: db_subnet2
+
+      - name: Create App subnet
+        local_action:
+          module: ec2_vpc_subnet
+          region: "{{ elasticache_region }}"
+          az: "{{ availability_zone1 }}"
+          state: present
+          vpc_id: "{{ vpc.vpc.id }}"
+          resource_tags: '{"Project":"{{ec2_tag_Project}}","Role":"{{ec2_tag_Role}}","Use":"{{ec2_tag_Use}}","ResponsibleParty":"{{ec2_tag_ResponsibleParty}}"}'
+          cidr: 10.1.9.0/24
+        register: app_subnet
+
+      - name: Create a security group for elasticache
+        local_action:
+          module: ec2_group
+          state: present
+          region: "{{ elasticache_region }}"
+          description: App hosts to elasticache
+          name: App to Elasticache
+          vpc_id: "{{ vpc.vpc.id }}"
+          rules:
+            - proto: tcp
+              from_port: 11211
+              to_port: 11211
+              cidr_ip: 10.1.9.0/24
+        register: elasticache_sg
+
+      - debug: msg="Elasticache SG - {{ elasticache_sg }}"
+
+      - name: Create a security group for RDS
+        local_action:
+          module: ec2_group
+          state: present
+          region: "{{ elasticache_region }}"
+          description: App hosts to RDS
+          name: App to RDS
+          vpc_id: "{{ vpc.vpc.id }}"
+          rules:
+            - proto: tcp
+              from_port: 3306
+              to_port: 3306
+              cidr_ip: 10.1.9.0/24
+        register: rds_sg
+
+      - name: make a subnet group for elasticache
+        local_action:
+          module: elasticache_subnet_group
+          state: present
+          region: "{{ elasticache_region }}"
+          name: subnets-for-elasticache
+          description: subnets for automated elasticache deployment
+          subnets:
+            - "{{ elasticache_subnet1.subnet.id }}"
+            - "{{ elasticache_subnet2.subnet.id }}"
+
+
+      - name: make a subnet group for RDS
+        local_action:
+          module: rds_subnet_group
+          state: present
+          region: "{{ elasticache_region }}"
+          name: subnets-for-rds
+          description: subnets for automated rds deployment
+          subnets:
+            - "{{ db_subnet1.subnet.id }}"
+            - "{{ db_subnet2.subnet.id }}"
 
       - name: Provision elasticache
         local_action:
@@ -33,9 +138,9 @@
           cache_port: 11211
           num_nodes: 1
           name: "{{ elasticache_instance_name }}"
+          cache_subnet_group: "subnets-for-elasticache"
           cache_security_groups: []
-          security_group_ids: "{{ elasticache_security_group }}"
-          tags: '{"Project":"{{rds_tag_Project}}","Role":"{{rds_tag_Role}}","Use":"{{rds_tag_Use}}","ResponsibleParty":"{{rds_tag_ResponsibleParty}}"}'
+          security_group_ids: "{{ elasticache_sg.group_id }}"
           wait: true
 
       - name: Provision Multizone RDS Instance
@@ -51,7 +156,7 @@
           password: "{{ rds_master_password }}"
           username: "{{ rds_master_username }}"
           region: "{{ rds_region }}"
-          subnet: "{{ db_subnet }}"
-          vpc_security_groups: "{{ rds_security_group }}"
+          subnet: "subnets-for-rds"
+          vpc_security_groups: "{{ rds_sg.group_id }}"
           tags: '{"Project":"{{rds_tag_Project}}","Role":"{{rds_tag_Role}}","Use":"{{rds_tag_Use}}","ResponsibleParty":"{{rds_tag_ResponsibleParty}}"}'
           wait: true

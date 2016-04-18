@@ -1,5 +1,5 @@
 # Eep
-from deploy import run_playbook, BASE_DIR
+from deploy import v2_run_playbook, BASE_DIR
 import os
 
 
@@ -8,4 +8,4 @@ if __name__ == "__main__":
     inventory_path = os.path.join(BASE_DIR, 'aca-aws', 'hosts', 'localhost')
     role = 'infrastructure'
 
-    run_playbook(playbook_path, inventory_path, role)
+    v2_run_playbook('localhost', 'local', playbook_path, inventory_path, role)

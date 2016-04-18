@@ -1,8 +1,10 @@
+
+
 elasticache_region: ""
 elasticache_instance_name: ""
 elasticache_security_group: "" # Group ID of your security group, eg sg-12343
 
-
+db_primary_availability_zone: ""
 rds_security_group: ""  # Group ID of your security group, eg sg-12343
 rds_db_name: "" # The name of the db your app connects to
 rds_instance_name: "" # The unique name for your RDS
@@ -18,3 +20,9 @@ rds_tag_Role: "db"
 rds_tag_ResponsibleParty: ""  # username
 rds_tag_Use: ""
 rds_initial_storage: 10
+
+ec2_tag_Role: "app"
+ec2_tag_Project: ""
+ec2_tag_ResponsibleParty: ""  # username
+ec2_tag_Use: ""
+ec2_primary_availability_zone: ""
