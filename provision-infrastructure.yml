@@ -106,6 +106,19 @@
               cidr_ip: 10.1.9.0/24
         register: rds_sg
 
+      - name: create the ELB
+        local_action:
+            module: ec2_elb_lb
+            region: "{{ elasticache_region }}"
+            state: present
+            name: "demo-elb"
+            listeners:
+              - protocol: http
+                load_balancer_port: 80
+                instance_port: 80
+            subnets:
+              - "{{ app_subnet.subnet.id }}"
+
       - name: make a subnet group for elasticache
         local_action:
           module: elasticache_subnet_group
