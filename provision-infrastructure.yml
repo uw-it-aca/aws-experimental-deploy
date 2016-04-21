@@ -106,6 +106,15 @@
               cidr_ip: 10.1.9.0/24
         register: rds_sg
 
+      - name: upload the certificate needed by the ELB
+        local_action:
+          module: iam_cert
+          name: "cert_for_{{ rds_tag_Project }}_{{ rds_tag_Environment }}"
+          state: present
+          cert: "{{ files_root }}/certs/{{ cert_name }}"
+          key: "{{ files_root }}/certs/{{ cert_key_name }}"
+        register: https_cert
+
       - name: create the ELB
         local_action:
             module: ec2_elb_lb
@@ -116,6 +125,10 @@
               - protocol: http
                 load_balancer_port: 80
                 instance_port: 80
+              - protocol: https
+                load_balancer_port: 443
+                instance_port: 443
+                ssl_certificate_id: "arn:aws:iam::{{ aws_account_id }}:server-certificate/{{ https_cert.name }}"
             subnets:
               - "{{ app_subnet.subnet.id }}"
 
