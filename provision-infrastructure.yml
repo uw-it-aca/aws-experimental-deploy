@@ -6,16 +6,7 @@
       - include_vars: vars/app.yml
 
     tasks:
-      - name: Create VPC
-        local_action:
-          module: ec2_vpc
-          region: "{{ aws_region }}"
-          internet_gateway: yes
-          state: present
-          cidr_block: 10.1.0.0/16
-          resource_tags: '{"Project":"{{aws_tag_Project}}","Role":"VPC","Use":"{{aws_service_level}}","ResponsibleParty":"{{aws_tag_ResponsibleParty}}"}'
-        register: vpc
-
+      - include: playbooks/create-vpc.yml
       - name: Create Elasticache subnet in AZ1
         local_action:
           module: ec2_vpc_subnet
@@ -60,16 +51,9 @@
           cidr: 10.1.6.0/24
         register: db_subnet2
 
-      - name: Create App subnet
-        local_action:
-          module: ec2_vpc_subnet
-          region: "{{ aws_region }}"
-          az: "{{ aws_availability_zone1 }}"
-          state: present
-          vpc_id: "{{ vpc.vpc.id }}"
-          resource_tags: '{"Project":"{{aws_tag_Project}}","Role":"Subnet","Use":"{{aws_service_level}}","ResponsibleParty":"{{aws_tag_ResponsibleParty}}"}'
-          cidr: 10.1.9.0/24
-        register: app_subnet
+      - include: playbooks/app-subnet.yml
+
+      - include: playbooks/instance-sg.yml
 
       - name: Create a security group for elasticache
         local_action:
@@ -125,7 +109,8 @@
                 instance_port: 443
                 ssl_certificate_id: "arn:aws:iam::{{ aws_account_id }}:server-certificate/{{ https_cert.name }}"
             subnets:
-              - "{{ app_subnet.subnet.id }}"
+              - "{{ app_subnet1.subnet.id }}"
+              - "{{ app_subnet2.subnet.id }}"
 
       - name: make a subnet group for elasticache
         local_action:
