@@ -1,0 +1,42 @@
+# Creates (if needed) a subnet for ec2 instances
+# Registers app_subnet1 and app_subnet2 for other tasks
+---
+- name: Create App subnet1
+  local_action:
+    module: ec2_vpc_subnet
+    region: "{{ aws_region }}"
+    az: "{{ aws_availability_zone1 }}"
+    state: present
+    vpc_id: "{{ vpc.vpc.id }}"
+    resource_tags: '{"Project":"{{aws_tag_Project}}","Role":"Subnet","Use":"{{aws_service_level}}","ResponsibleParty":"{{aws_tag_ResponsibleParty}}"}'
+    cidr: 10.1.9.0/24
+  register: app_subnet1
+
+- name: Create App subnet2
+  local_action:
+    module: ec2_vpc_subnet
+    region: "{{ aws_region }}"
+    az: "{{ aws_availability_zone2 }}"
+    state: present
+    vpc_id: "{{ vpc.vpc.id }}"
+    resource_tags: '{"Project":"{{aws_tag_Project}}","Role":"Subnet","Use":"{{aws_service_level}}","ResponsibleParty":"{{aws_tag_ResponsibleParty}}"}'
+    cidr: 10.1.10.0/24
+  register: app_subnet2
+
+- name: Create routes to app subnets
+  local_action:
+    module: ec2_vpc_route_table
+    region: "{{ aws_region }}"
+    vpc_id: "{{ vpc.vpc.id }}"
+    tags: '{"Project":"{{aws_tag_Project}}","Role":"Network Table","Use":"{{aws_service_level}}","ResponsibleParty":"{{aws_tag_ResponsibleParty}}"}'
+    subnets:
+      - "{{ app_subnet1.subnet.id }}"
+      - "{{ app_subnet2.subnet.id }}"
+    routes:
+      - dest: 0.0.0.0/0
+        gateway_id: "igw"
+  register: route_table
+
+- debug: msg="Route table = {{ route_table }}"
+
+

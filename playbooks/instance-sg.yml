@@ -1,0 +1,29 @@
+# Creates (if needed) a security group for ec2 instances
+# that are connected to through an ELB
+# Registers the security group for other tasks
+---
+- name: Create a security group for EC2
+  local_action:
+    module: ec2_group
+    state: present
+    region: "{{ aws_region }}"
+    description: Load balancers to EC2
+    name: elb2ec2
+    vpc_id: "{{ vpc.vpc.id }}"
+    rules:
+      - proto: tcp
+        from_port: 80
+        to_port: 80
+        cidr_ip: 10.1.0.0/16
+      - proto: tcp
+        from_port: 443
+        to_port: 443
+        cidr_ip: 10.1.0.0/16
+      # Don't like this, but we need to connect via ssh for ansible playbooks
+      - proto: tcp
+        from_port: 22
+        to_port: 22
+        cidr_ip: 0.0.0.0/0
+
+  register: ec2_sg
+
