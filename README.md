@@ -1,10 +1,6 @@
 To run:
 
-  Copy ec2_vars/appservers-sample.yml to ec2_vars/appservers.yml, and fill it in.
-
-  Copy ec2_vars/infrastructure-sample.yml to ec2_vars/infrastructure.yml, and fill it in.
-
-These files will be merged at some point.
+  Copy vars/app-sample.yml to vars/app.yml, and fill it in.
 
   Copy sample.settings.py to settings.py, and fill it in.
 

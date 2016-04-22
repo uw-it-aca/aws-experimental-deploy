@@ -3,74 +3,71 @@
     connection: local
     gather_facts: false
     pre_tasks:
-      - include_vars: ec2_vars/{{ type }}.yml
+      - include_vars: vars/app.yml
 
     tasks:
       - name: Create VPC
         local_action:
           module: ec2_vpc
-          region: "{{ elasticache_region }}"
+          region: "{{ aws_region }}"
           internet_gateway: yes
           state: present
           cidr_block: 10.1.0.0/16
-          resource_tags: '{"Project":"{{rds_tag_Project}}","Role":"{{rds_tag_Role}}","Use":"{{rds_tag_Use}}","ResponsibleParty":"{{rds_tag_ResponsibleParty}}"}'
+          resource_tags: '{"Project":"{{aws_tag_Project}}","Role":"VPC","Use":"{{aws_service_level}}","ResponsibleParty":"{{aws_tag_ResponsibleParty}}"}'
         register: vpc
-
-      - debug: msg="VPC - {{ vpc }}"
-      - debug: msg="VPC ID - {{ vpc.vpc.id }}"
 
       - name: Create Elasticache subnet in AZ1
         local_action:
           module: ec2_vpc_subnet
-          region: "{{ elasticache_region }}"
-          az: "{{ availability_zone1 }}"
+          region: "{{ aws_region }}"
+          az: "{{ aws_availability_zone1 }}"
           state: present
           vpc_id: "{{ vpc.vpc.id }}"
-          resource_tags: '{"Project":"{{rds_tag_Project}}","Role":"{{rds_tag_Role}}","Use":"{{rds_tag_Use}}","ResponsibleParty":"{{rds_tag_ResponsibleParty}}"}'
+          resource_tags: '{"Project":"{{aws_tag_Project}}","Role":"Subnet","Use":"{{aws_service_level}}","ResponsibleParty":"{{aws_tag_ResponsibleParty}}"}'
           cidr: 10.1.4.0/24
         register: elasticache_subnet1
 
       - name: Create Elasticache subnet in AZ2
         local_action:
           module: ec2_vpc_subnet
-          region: "{{ elasticache_region }}"
-          az: "{{ availability_zone2 }}"
+          region: "{{ aws_region }}"
+          az: "{{ aws_availability_zone2 }}"
           state: present
           vpc_id: "{{ vpc.vpc.id }}"
-          resource_tags: '{"Project":"{{rds_tag_Project}}","Role":"{{rds_tag_Role}}","Use":"{{rds_tag_Use}}","ResponsibleParty":"{{rds_tag_ResponsibleParty}}"}'
+          resource_tags: '{"Project":"{{aws_tag_Project}}","Role":"Memcached","Use":"{{aws_service_level}}","ResponsibleParty":"{{aws_tag_ResponsibleParty}}"}'
           cidr: 10.1.3.0/24
         register: elasticache_subnet2
 
       - name: Create DB subnet1
         local_action:
           module: ec2_vpc_subnet
-          region: "{{ elasticache_region }}"
-          az: "{{ availability_zone1 }}"
+          region: "{{ aws_region }}"
+          az: "{{ aws_availability_zone1 }}"
           state: present
           vpc_id: "{{ vpc.vpc.id }}"
-          resource_tags: '{"Project":"{{rds_tag_Project}}","Role":"{{rds_tag_Role}}","Use":"{{rds_tag_Use}}","ResponsibleParty":"{{rds_tag_ResponsibleParty}}"}'
+          resource_tags: '{"Project":"{{aws_tag_Project}}","Role":"Subnet","Use":"{{aws_service_level}}","ResponsibleParty":"{{aws_tag_ResponsibleParty}}"}'
           cidr: 10.1.5.0/24
         register: db_subnet1
 
       - name: Create DB subnet2
         local_action:
           module: ec2_vpc_subnet
-          region: "{{ elasticache_region }}"
-          az: "{{ availability_zone2 }}"
+          region: "{{ aws_region }}"
+          az: "{{ aws_availability_zone2 }}"
           state: present
           vpc_id: "{{ vpc.vpc.id }}"
-          resource_tags: '{"Project":"{{rds_tag_Project}}","Role":"{{rds_tag_Role}}","Use":"{{rds_tag_Use}}","ResponsibleParty":"{{rds_tag_ResponsibleParty}}"}'
+          resource_tags: '{"Project":"{{aws_tag_Project}}","Role":"Subnet","Use":"{{aws_service_level}}","ResponsibleParty":"{{aws_tag_ResponsibleParty}}"}'
           cidr: 10.1.6.0/24
         register: db_subnet2
 
       - name: Create App subnet
         local_action:
           module: ec2_vpc_subnet
-          region: "{{ elasticache_region }}"
-          az: "{{ availability_zone1 }}"
+          region: "{{ aws_region }}"
+          az: "{{ aws_availability_zone1 }}"
           state: present
           vpc_id: "{{ vpc.vpc.id }}"
-          resource_tags: '{"Project":"{{ec2_tag_Project}}","Role":"{{ec2_tag_Role}}","Use":"{{ec2_tag_Use}}","ResponsibleParty":"{{ec2_tag_ResponsibleParty}}"}'
+          resource_tags: '{"Project":"{{aws_tag_Project}}","Role":"Subnet","Use":"{{aws_service_level}}","ResponsibleParty":"{{aws_tag_ResponsibleParty}}"}'
           cidr: 10.1.9.0/24
         register: app_subnet
 
@@ -78,7 +75,7 @@
         local_action:
           module: ec2_group
           state: present
-          region: "{{ elasticache_region }}"
+          region: "{{ aws_region }}"
           description: App hosts to elasticache
           name: App to Elasticache
           vpc_id: "{{ vpc.vpc.id }}"
@@ -89,13 +86,11 @@
               cidr_ip: 10.1.9.0/24
         register: elasticache_sg
 
-      - debug: msg="Elasticache SG - {{ elasticache_sg }}"
-
       - name: Create a security group for RDS
         local_action:
           module: ec2_group
           state: present
-          region: "{{ elasticache_region }}"
+          region: "{{ aws_region }}"
           description: App hosts to RDS
           name: App to RDS
           vpc_id: "{{ vpc.vpc.id }}"
@@ -109,7 +104,7 @@
       - name: upload the certificate needed by the ELB
         local_action:
           module: iam_cert
-          name: "cert_for_{{ rds_tag_Project }}_{{ rds_tag_Environment }}"
+          name: "cert_for_{{ aws_tag_Project }}_{{ aws_service_level }}"
           state: present
           cert: "{{ files_root }}/certs/{{ cert_name }}"
           key: "{{ files_root }}/certs/{{ cert_key_name }}"
@@ -118,9 +113,9 @@
       - name: create the ELB
         local_action:
             module: ec2_elb_lb
-            region: "{{ elasticache_region }}"
+            region: "{{ aws_region }}"
             state: present
-            name: "demo-elb"
+            name: "{{ aws_tag_Project }}-{{ aws_service_level }}-elb"
             listeners:
               - protocol: http
                 load_balancer_port: 80
@@ -136,7 +131,7 @@
         local_action:
           module: elasticache_subnet_group
           state: present
-          region: "{{ elasticache_region }}"
+          region: "{{ aws_region }}"
           name: subnets-for-elasticache
           description: subnets for automated elasticache deployment
           subnets:
@@ -148,7 +143,7 @@
         local_action:
           module: rds_subnet_group
           state: present
-          region: "{{ elasticache_region }}"
+          region: "{{ aws_region }}"
           name: subnets-for-rds
           description: subnets for automated rds deployment
           subnets:
@@ -160,10 +155,11 @@
           module: elasticache
           state: present
           engine: memcached
-          region: "{{ elasticache_region }}"
+          region: "{{ aws_region }}"
           cache_port: 11211
           num_nodes: 1
-          name: "{{ elasticache_instance_name }}"
+          # Must be under 20 chars
+          name: "{{ aws_service_level }}-ec"
           cache_subnet_group: "subnets-for-elasticache"
           cache_security_groups: []
           security_group_ids: "{{ elasticache_sg.group_id }}"
@@ -174,15 +170,15 @@
           module: rds
           command: create
           db_engine: MySQL
-          db_name: "{{ rds_db_name }}"
-          instance_name: "{{ rds_instance_name }}"
+          db_name: "{{ rds_db_name | default('app_db') }}"
+          instance_name: "{{ aws_tag_Project }}-{{ aws_service_level }}-rds"
           instance_type: "{{ rds_instance_type }}"
           size: "{{ rds_initial_storage }}"
           multi_zone: yes
           password: "{{ rds_master_password }}"
           username: "{{ rds_master_username }}"
-          region: "{{ rds_region }}"
+          region: "{{ aws_region }}"
           subnet: "subnets-for-rds"
           vpc_security_groups: "{{ rds_sg.group_id }}"
-          tags: '{"Project":"{{rds_tag_Project}}","Role":"{{rds_tag_Role}}","Use":"{{rds_tag_Use}}","ResponsibleParty":"{{rds_tag_ResponsibleParty}}"}'
+          tags: '{"Project":"{{aws_tag_Project}}","Role":"Database","Use":"{{aws_service_level}}","ResponsibleParty":"{{aws_tag_ResponsibleParty}}"}'
           wait: true
