@@ -20,13 +20,22 @@ import argparse
 import os
 import settings
 
+import time
+import hashlib
+import random
+
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
-def v2_run_playbook(hostnames, connection, playbook_path, inventory_path, role, private_key_file=None):
+def v2_run_playbook(hostnames, connection, playbook_path, inventory_path, role, private_key_file=None, extra_tags={}):
     run_data = {
-        'type': role
+        'type': role,
+        'extra_tags': extra_tags,
+        'tag_hash_values': '',
     }
+
+    for key in extra_tags:
+        run_data['tag_hash_values'] += ',"%s":"%s"' % (key, extra_tags[key])
 
     # The playbooks can require env set here :(
     if "AWS_ACCESS_KEY_ID" not in os.environ:
@@ -66,11 +75,16 @@ if __name__ == "__main__":
     parser.add_argument('project', nargs='?')
     args = parser.parse_args()
 
+    timestamp = int(time.time())
+    random_id = hashlib.md5("%s" % random.random()).hexdigest()
+    tag_name = "build-%s" % timestamp
+
     playbook_path = os.path.join(BASE_DIR, 'aca-aws', 'provision-ec2.yml')
     inventory_path = os.path.join(BASE_DIR, 'aca-aws', 'hosts', 'localhost')
     host = 'localhost'
     role = 'appservers'
-    v2_run_playbook(host, 'local', playbook_path, inventory_path, role)
+    v2_run_playbook(host, 'local', playbook_path, inventory_path, role,
+                    extra_tags={ tag_name: random_id })
 
     playbook_path = os.path.join(BASE_DIR, 'aca-aws', 'simple.yml')
     hosts = inventory_for_project(args)

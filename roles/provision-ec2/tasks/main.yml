@@ -5,6 +5,7 @@
   - include: playbooks/instance-sg.yml
   - include: playbooks/app-subnet.yml
 
+  - debug: msg='Tags = {"Project":"{{aws_tag_Project}}","Role":"App","Use":"{{aws_service_level}}","ResponsibleParty":"{{aws_tag_ResponsibleParty}}"{{ tag_hash_values }}}'
   - name: Provision ec2 box
     local_action:
       module: ec2
@@ -14,7 +15,7 @@
       image: "{{ ec2_base_image }}"
       vpc_subnet_id: "{{ [ app_subnet1.subnet.id, app_subnet2.subnet.id ]|random }}"
       region: "{{ aws_region }}"
-      instance_tags: '{"Project":"{{aws_tag_Project}}","Role":"App","Use":"{{aws_service_level}}","ResponsibleParty":"{{aws_tag_ResponsibleParty}}"}'
+      instance_tags: '{"Project":"{{aws_tag_Project}}","Role":"App","Use":"{{aws_service_level}}","ResponsibleParty":"{{aws_tag_ResponsibleParty}}"{{ tag_hash_values }}}'
       assign_public_ip: yes
       wait: true
       count: 1
