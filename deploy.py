@@ -7,6 +7,9 @@
 """
 # DO NOT change the order of these imports, there's a circular dependency in
 # ansible 1.9 that will cause things to break
+from util import set_ansible_display
+display = set_ansible_display()
+
 from ansible.playbook import Playbook
 from ansible.inventory import Inventory
 from ansible import utils

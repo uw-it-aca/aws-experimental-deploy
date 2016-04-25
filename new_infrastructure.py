@@ -1,3 +1,5 @@
+from util import set_ansible_display
+display = set_ansible_display()
 # Eep
 from deploy import v2_run_playbook, BASE_DIR
 import os
