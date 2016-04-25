@@ -30,12 +30,17 @@ import random
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
-def v2_run_playbook(hostnames, connection, playbook_path, inventory_path, role, private_key_file=None, extra_tags={}):
+def v2_run_playbook(hostnames, connection, playbook_path, inventory_path, role, private_key_file=None, extra_tags={}, data={}):
+    if type(hostnames) != type([]):
+        hostnames = [hostnames]
     run_data = {
         'type': role,
         'extra_tags': extra_tags,
         'tag_hash_values': '',
     }
+
+    for key in data:
+        run_data[key] = data[key]
 
     for key in extra_tags:
         run_data['tag_hash_values'] += ',"%s":"%s"' % (key, extra_tags[key])
@@ -103,8 +108,8 @@ if __name__ == "__main__":
     v2_run_playbook(host, 'local', playbook_path, inventory_path, role,
                     extra_tags={ tag_name: random_id })
 
-    playbook_path = os.path.join(BASE_DIR, 'aca-aws', 'simple.yml')
     host = find_instance_by_tag(tag_name, random_id)
+    playbook_path = os.path.join(BASE_DIR, 'aca-aws', 'simple.yml')
     private_key_file = getattr(settings, 'AWS_PRIVATE_KEY_FILE', None)
     print host.public_dns_name
 

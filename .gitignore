@@ -10,9 +10,11 @@ vars/app.yml
 /local
 /include
 /bin
+/src
 
 # pip stuff
 /pip-selfcheck.json
+
 
 # vim stuff
 *.swp
