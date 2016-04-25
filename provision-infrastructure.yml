@@ -1,0 +1,169 @@
+---
+  - hosts: localhost
+    connection: local
+    gather_facts: false
+    pre_tasks:
+      - include_vars: vars/app.yml
+
+    tasks:
+      - include: playbooks/create-vpc.yml
+      - name: Create Elasticache subnet in AZ1
+        local_action:
+          module: ec2_vpc_subnet
+          region: "{{ aws_region }}"
+          az: "{{ aws_availability_zone1 }}"
+          state: present
+          vpc_id: "{{ vpc.vpc.id }}"
+          resource_tags: '{"Project":"{{aws_tag_Project}}","Role":"Subnet","Use":"{{aws_service_level}}","ResponsibleParty":"{{aws_tag_ResponsibleParty}}"}'
+          cidr: 10.1.4.0/24
+        register: elasticache_subnet1
+
+      - name: Create Elasticache subnet in AZ2
+        local_action:
+          module: ec2_vpc_subnet
+          region: "{{ aws_region }}"
+          az: "{{ aws_availability_zone2 }}"
+          state: present
+          vpc_id: "{{ vpc.vpc.id }}"
+          resource_tags: '{"Project":"{{aws_tag_Project}}","Role":"Memcached","Use":"{{aws_service_level}}","ResponsibleParty":"{{aws_tag_ResponsibleParty}}"}'
+          cidr: 10.1.3.0/24
+        register: elasticache_subnet2
+
+      - name: Create DB subnet1
+        local_action:
+          module: ec2_vpc_subnet
+          region: "{{ aws_region }}"
+          az: "{{ aws_availability_zone1 }}"
+          state: present
+          vpc_id: "{{ vpc.vpc.id }}"
+          resource_tags: '{"Project":"{{aws_tag_Project}}","Role":"Subnet","Use":"{{aws_service_level}}","ResponsibleParty":"{{aws_tag_ResponsibleParty}}"}'
+          cidr: 10.1.5.0/24
+        register: db_subnet1
+
+      - name: Create DB subnet2
+        local_action:
+          module: ec2_vpc_subnet
+          region: "{{ aws_region }}"
+          az: "{{ aws_availability_zone2 }}"
+          state: present
+          vpc_id: "{{ vpc.vpc.id }}"
+          resource_tags: '{"Project":"{{aws_tag_Project}}","Role":"Subnet","Use":"{{aws_service_level}}","ResponsibleParty":"{{aws_tag_ResponsibleParty}}"}'
+          cidr: 10.1.6.0/24
+        register: db_subnet2
+
+      - include: playbooks/app-subnet.yml
+
+      - include: playbooks/instance-sg.yml
+
+      - name: Create a security group for elasticache
+        local_action:
+          module: ec2_group
+          state: present
+          region: "{{ aws_region }}"
+          description: App hosts to elasticache
+          name: App to Elasticache
+          vpc_id: "{{ vpc.vpc.id }}"
+          rules:
+            - proto: tcp
+              from_port: 11211
+              to_port: 11211
+              cidr_ip: 10.1.9.0/24
+        register: elasticache_sg
+
+      - name: Create a security group for RDS
+        local_action:
+          module: ec2_group
+          state: present
+          region: "{{ aws_region }}"
+          description: App hosts to RDS
+          name: App to RDS
+          vpc_id: "{{ vpc.vpc.id }}"
+          rules:
+            - proto: tcp
+              from_port: 3306
+              to_port: 3306
+              cidr_ip: 10.1.9.0/24
+        register: rds_sg
+
+      - name: upload the certificate needed by the ELB
+        local_action:
+          module: iam_cert
+          name: "cert_for_{{ aws_tag_Project }}_{{ aws_service_level }}"
+          state: present
+          cert: "{{ files_root }}/certs/{{ cert_name }}"
+          key: "{{ files_root }}/certs/{{ cert_key_name }}"
+        register: https_cert
+
+      - name: create the ELB
+        local_action:
+            module: ec2_elb_lb
+            region: "{{ aws_region }}"
+            state: present
+            name: "{{ aws_tag_Project }}-{{ aws_service_level }}-elb"
+            listeners:
+              - protocol: http
+                load_balancer_port: 80
+                instance_port: 80
+              - protocol: https
+                load_balancer_port: 443
+                instance_port: 443
+                ssl_certificate_id: "arn:aws:iam::{{ aws_account_id }}:server-certificate/{{ https_cert.name }}"
+            subnets:
+              - "{{ app_subnet1.subnet.id }}"
+              - "{{ app_subnet2.subnet.id }}"
+
+      - name: make a subnet group for elasticache
+        local_action:
+          module: elasticache_subnet_group
+          state: present
+          region: "{{ aws_region }}"
+          name: subnets-for-elasticache
+          description: subnets for automated elasticache deployment
+          subnets:
+            - "{{ elasticache_subnet1.subnet.id }}"
+            - "{{ elasticache_subnet2.subnet.id }}"
+
+
+      - name: make a subnet group for RDS
+        local_action:
+          module: rds_subnet_group
+          state: present
+          region: "{{ aws_region }}"
+          name: subnets-for-rds
+          description: subnets for automated rds deployment
+          subnets:
+            - "{{ db_subnet1.subnet.id }}"
+            - "{{ db_subnet2.subnet.id }}"
+
+      - name: Provision elasticache
+        local_action:
+          module: elasticache
+          state: present
+          engine: memcached
+          region: "{{ aws_region }}"
+          cache_port: 11211
+          num_nodes: 1
+          # Must be under 20 chars
+          name: "{{ aws_service_level }}-ec"
+          cache_subnet_group: "subnets-for-elasticache"
+          cache_security_groups: []
+          security_group_ids: "{{ elasticache_sg.group_id }}"
+          wait: true
+
+      - name: Provision Multizone RDS Instance
+        local_action:
+          module: rds
+          command: create
+          db_engine: MySQL
+          db_name: "{{ rds_db_name | default('app_db') }}"
+          instance_name: "{{ aws_tag_Project }}-{{ aws_service_level }}-rds"
+          instance_type: "{{ rds_instance_type }}"
+          size: "{{ rds_initial_storage }}"
+          multi_zone: yes
+          password: "{{ rds_master_password }}"
+          username: "{{ rds_master_username }}"
+          region: "{{ aws_region }}"
+          subnet: "subnets-for-rds"
+          vpc_security_groups: "{{ rds_sg.group_id }}"
+          tags: '{"Project":"{{aws_tag_Project}}","Role":"Database","Use":"{{aws_service_level}}","ResponsibleParty":"{{aws_tag_ResponsibleParty}}"}'
+          wait: true

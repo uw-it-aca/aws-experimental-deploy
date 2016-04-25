@@ -1,0 +1,26 @@
+# From: http://allandenot.com/devops/2015/01/31/provisioning-ec2-hosts-with-ansible.html
+aws_keypair: ""  # Key pair name
+aws_security_group: ""  # Group ID of your security group, eg sg-123456
+aws_region: "us-west-2"
+aws_tag_Name: "AWS Ops"
+aws_tag_Type: "Application"
+aws_tag_ResponsibleParty: ""  # username
+aws_tag_Project: ""
+aws_service_level: "test" # e.g. production, test, dev
+aws_availability_zone1: "us-west-2a"
+aws_availability_zone2: "us-west-2b"
+
+files_root: "/path/to/files/"
+cert_name: "demo.crt"
+cert_key_name: "demo.key"
+
+aws_account_id: 12-digit-number
+
+ec2_instance_type: "t2.micro"
+ec2_base_image: ""  # an AMI ID
+ec2_volume_size: 16
+
+rds_master_username: ""
+rds_master_password: ""
+rds_initial_storage: 10
+rds_instance_type: "db.t2.micro"

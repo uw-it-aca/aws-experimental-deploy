@@ -6,16 +6,9 @@
     This borrows heavily from https://serversforhackers.com/running-ansible-programmatically
 """
 # DO NOT change the order of these imports, there's a circular dependency in
-# ansible 1.9 that will cause things to break.
-try:
-    from ansible.playbook import Playbook
-except:
-    from ansible.playbook import PlayBook
+# ansible 1.9 that will cause things to break
+from ansible.playbook import Playbook
 from ansible.inventory import Inventory
-try:
-    from ansible import callbacks
-except:
-    pass
 from ansible import utils
 
 # v2
@@ -27,32 +20,27 @@ import argparse
 import os
 import settings
 
+import time
+import hashlib
+import random
+
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
-def run_playbook(playbook_path, inventory_path, role):
-
-    utils.VERBOSITY = 4
-    playbook_cb = callbacks.PlaybookCallbacks(verbose=utils.VERBOSITY)
-    stats = callbacks.AggregateStats()
-    runner_cb = callbacks.PlaybookRunnerCallbacks(
-        stats, verbose=utils.VERBOSITY)
-
-    deploy_ec2 = Playbook(
-        playbook=playbook_path,
-        host_list=inventory_path,
-        callbacks=playbook_cb,
-        runner_callbacks=runner_cb,
-        stats=stats,
-        extra_vars={'type': role}
-    )
-    results = deploy_ec2.run()
-
-
-def v2_run_playbook(hostnames, connection, playbook_path, inventory_path, role, private_key_file=None):
+def v2_run_playbook(hostnames, connection, playbook_path, inventory_path, role, private_key_file=None, extra_tags={}):
     run_data = {
-        'type': role
+        'type': role,
+        'extra_tags': extra_tags,
+        'tag_hash_values': '',
     }
+
+    for key in extra_tags:
+        run_data['tag_hash_values'] += ',"%s":"%s"' % (key, extra_tags[key])
+
+    # The playbooks can require env set here :(
+    if "AWS_ACCESS_KEY_ID" not in os.environ:
+        os.environ['AWS_ACCESS_KEY_ID'] = settings.AWS_ACCESS_KEY_ID
+        os.environ['AWS_SECRET_ACCESS_KEY'] = settings.AWS_SECRET_ACCESS_KEY
 
     runner = Runner(
         connection=connection,
@@ -60,16 +48,20 @@ def v2_run_playbook(hostnames, connection, playbook_path, inventory_path, role, 
         hostnames=hostnames,
         playbook=playbook_path,
         run_data=run_data,
-        verbosity=4,
+        verbosity=8,
     )
 
     stats = runner.run()
 
-
-def inventory_for_project(args):
+def _get_ec2_conn():
     ec2conn = ec2.connect_to_region(settings.AWS_REGION,
                                     aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
                                     aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY)
+    return ec2conn
+
+def inventory_for_project(args):
+    ec2conn = _get_ec2_conn()
+
     all_reservations = ec2conn.get_all_reservations()
     reservations = [
         i for a in all_reservations for i in a.instances if 'Project' in i.tags and args.project in i.tags['Project']]
@@ -79,6 +71,16 @@ def inventory_for_project(args):
             i.public_dns_name)
     return output
 
+def find_instance_by_tag(tag_name, tag_value):
+    ec2conn = _get_ec2_conn()
+    val = ec2conn.get_all_instances(filters={"tag:%s" % tag_name : tag_value })
+    if len(val) > 1:
+        raise Exception("Multiple matches?  Inconceivable!")
+
+    instances = [i for r in val for i in r.instances]
+    if len(instances) > 1:
+        raise Exception("Multiple matches?  Inconceivable!")
+    return instances[0]
 
 if __name__ == "__main__":
     # In a django management command, the parser is already instantiated.
@@ -87,14 +89,21 @@ if __name__ == "__main__":
     parser.add_argument('project', nargs='?')
     args = parser.parse_args()
 
+    timestamp = int(time.time())
+    random_id = hashlib.md5("%s" % random.random()).hexdigest()
+    tag_name = "build-%s" % timestamp
+
     playbook_path = os.path.join(BASE_DIR, 'aca-aws', 'provision-ec2.yml')
     inventory_path = os.path.join(BASE_DIR, 'aca-aws', 'hosts', 'localhost')
     host = 'localhost'
     role = 'appservers'
-    v2_run_playbook(host, 'local', playbook_path, inventory_path, role)
+    v2_run_playbook(host, 'local', playbook_path, inventory_path, role,
+                    extra_tags={ tag_name: random_id })
 
     playbook_path = os.path.join(BASE_DIR, 'aca-aws', 'simple.yml')
-    hosts = inventory_for_project(args)
-    private_key_file = settings.AWS_PRIVATE_KEY_FILE
-    print hosts
-    v2_run_playbook(hosts, 'ssh', playbook_path, hosts, role, private_key_file)
+    host = find_instance_by_tag(tag_name, random_id)
+    private_key_file = getattr(settings, 'AWS_PRIVATE_KEY_FILE', None)
+    print host.public_dns_name
+
+    v2_run_playbook("%s" % host.public_dns_name, 'ssh', playbook_path,
+                    host.public_dns_name, role, private_key_file)
