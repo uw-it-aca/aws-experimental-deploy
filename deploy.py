@@ -53,11 +53,15 @@ def v2_run_playbook(hostnames, connection, playbook_path, inventory_path, role, 
 
     stats = runner.run()
 
-
-def inventory_for_project(args):
+def _get_ec2_conn():
     ec2conn = ec2.connect_to_region(settings.AWS_REGION,
                                     aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
                                     aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY)
+    return ec2conn
+
+def inventory_for_project(args):
+    ec2conn = _get_ec2_conn()
+
     all_reservations = ec2conn.get_all_reservations()
     reservations = [
         i for a in all_reservations for i in a.instances if 'Project' in i.tags and args.project in i.tags['Project']]
@@ -67,6 +71,16 @@ def inventory_for_project(args):
             i.public_dns_name)
     return output
 
+def find_instance_by_tag(tag_name, tag_value):
+    ec2conn = _get_ec2_conn()
+    val = ec2conn.get_all_instances(filters={"tag:%s" % tag_name : tag_value })
+    if len(val) > 1:
+        raise Exception("Multiple matches?  Inconceivable!")
+
+    instances = [i for r in val for i in r.instances]
+    if len(instances) > 1:
+        raise Exception("Multiple matches?  Inconceivable!")
+    return instances[0]
 
 if __name__ == "__main__":
     # In a django management command, the parser is already instantiated.
@@ -87,8 +101,9 @@ if __name__ == "__main__":
                     extra_tags={ tag_name: random_id })
 
     playbook_path = os.path.join(BASE_DIR, 'aca-aws', 'simple.yml')
-    hosts = inventory_for_project(args)
-    private_key_file = settings.AWS_PRIVATE_KEY_FILE
-    print hosts
+    host = find_instance_by_tag(tag_name, random_id)
+    private_key_file = getattr(settings, 'AWS_PRIVATE_KEY_FILE', None)
+    print host.public_dns_name
 
-    v2_run_playbook(hosts, 'ssh', playbook_path, hosts, role, private_key_file)
+    v2_run_playbook("%s" % host.public_dns_name, 'ssh', playbook_path,
+                    host.public_dns_name, role, private_key_file)

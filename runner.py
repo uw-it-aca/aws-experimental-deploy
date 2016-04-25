@@ -69,6 +69,7 @@ class Runner(object):
         self.options.private_key_file = private_key_file
         self.options.remote_user = "ubuntu"
         self.options.ssh_extra_args = "-vvvv -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null"
+        self.options.sftp_extra_args = self.options.ssh_extra_args
         self.options.verbosity = verbosity
         self.options.connection = connection
         #self.options.become = True
