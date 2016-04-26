@@ -105,8 +105,11 @@ if __name__ == "__main__":
     inventory_path = os.path.join(BASE_DIR, 'aca-aws', 'hosts', 'localhost')
     host = 'localhost'
     role = 'appservers'
-    v2_run_playbook(host, 'local', playbook_path, inventory_path, role,
-                    extra_tags={ tag_name: random_id })
+#    v2_run_playbook(host, 'local', playbook_path, inventory_path, role,
+#                    extra_tags={ tag_name: random_id })
+
+    random_id = 'c1798d48ced3bc12fb1dbc3d87ab5dd2'
+    tag_name = 'build-1461368064'
 
     host = find_instance_by_tag(tag_name, random_id)
     playbook_path = os.path.join(BASE_DIR, 'aca-aws', 'simple.yml')
@@ -115,3 +118,7 @@ if __name__ == "__main__":
 
     v2_run_playbook("%s" % host.public_dns_name, 'ssh', playbook_path,
                     host.public_dns_name, role, private_key_file)
+
+    # Add the host to the ELB (tmp to validate security groups)
+    playbook_path = os.path.join(BASE_DIR, 'aca-aws', 'update-elb.yml')
+    v2_run_playbook("localhost", 'local', playbook_path, inventory_path, role, data={"new_hosts": ["%s" % host.id]})

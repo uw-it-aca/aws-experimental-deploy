@@ -1,0 +1,18 @@
+---
+  - hosts: localhost
+    connection: local
+    gather_facts: false
+    pre_tasks:
+      - include_vars: vars/app.yml
+
+    tasks:
+      - name: Add hosts to the ELB
+        local_action:
+          region: "{{ aws_region }}"
+          module: ec2_elb
+          instance_id: "{{ item }}"
+          ec2_elbs: "{{ aws_tag_Project }}-{{ aws_service_level }}-elb"
+          state: present
+        with_items: new_hosts
+
+      - debug: msg="hosts = {{ new_hosts }}"
