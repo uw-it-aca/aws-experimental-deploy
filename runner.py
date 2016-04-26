@@ -99,11 +99,8 @@ class Runner(object):
         # Parse hosts, I haven't found a good way to
         # pass hosts in without using a parsed template :(
         # (Maybe you know how?)
-        self.hosts = NamedTemporaryFile(delete=False)
-        self.hosts.write("""[run_hosts]
-%s
-""" % hostnames)
-        self.hosts.close()
+        self.hosts = ",".join(hostnames)
+        self.hosts += ","
 
         # This was my attempt to pass in hosts directly.
         #
@@ -115,7 +112,7 @@ class Runner(object):
 
         # Set inventory, using most of above objects
         self.inventory = Inventory(
-            loader=self.loader, variable_manager=self.variable_manager, host_list=self.hosts.name)
+            loader=self.loader, variable_manager=self.variable_manager, host_list=self.hosts)
         self.variable_manager.set_inventory(self.inventory)
 
         # Playbook to run. Assumes it is
@@ -156,8 +153,5 @@ class Runner(object):
         #    user_id=self.run_data['user_id'],
         #    success=run_success
         #)
-
-        # Remove created temporary files
-        os.remove(self.hosts.name)
 
         return stats

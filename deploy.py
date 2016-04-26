@@ -7,6 +7,9 @@
 """
 # DO NOT change the order of these imports, there's a circular dependency in
 # ansible 1.9 that will cause things to break
+from util import set_ansible_display
+display = set_ansible_display()
+
 from ansible.playbook import Playbook
 from ansible.inventory import Inventory
 from ansible import utils
@@ -27,12 +30,17 @@ import random
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
-def v2_run_playbook(hostnames, connection, playbook_path, inventory_path, role, private_key_file=None, extra_tags={}):
+def v2_run_playbook(hostnames, connection, playbook_path, inventory_path, role, private_key_file=None, extra_tags={}, data={}):
+    if type(hostnames) != type([]):
+        hostnames = [hostnames]
     run_data = {
         'type': role,
         'extra_tags': extra_tags,
         'tag_hash_values': '',
     }
+
+    for key in data:
+        run_data[key] = data[key]
 
     for key in extra_tags:
         run_data['tag_hash_values'] += ',"%s":"%s"' % (key, extra_tags[key])
@@ -72,15 +80,19 @@ def inventory_for_project(args):
     return output
 
 def find_instance_by_tag(tag_name, tag_value):
+    instances = find_instances_by_tag(tag_name, tag_value)
+    if len(instances) > 1:
+        raise Exception("Multiple matches?  Inconceivable!")
+    return instances[0]
+
+def find_instances_by_tag(tag_name, tag_value):
     ec2conn = _get_ec2_conn()
     val = ec2conn.get_all_instances(filters={"tag:%s" % tag_name : tag_value })
     if len(val) > 1:
         raise Exception("Multiple matches?  Inconceivable!")
 
     instances = [i for r in val for i in r.instances]
-    if len(instances) > 1:
-        raise Exception("Multiple matches?  Inconceivable!")
-    return instances[0]
+    return instances
 
 if __name__ == "__main__":
     # In a django management command, the parser is already instantiated.
@@ -100,10 +112,22 @@ if __name__ == "__main__":
     v2_run_playbook(host, 'local', playbook_path, inventory_path, role,
                     extra_tags={ tag_name: random_id })
 
-    playbook_path = os.path.join(BASE_DIR, 'aca-aws', 'simple.yml')
+
     host = find_instance_by_tag(tag_name, random_id)
+    playbook_path = os.path.join(BASE_DIR, 'aca-aws', 'simple.yml')
     private_key_file = getattr(settings, 'AWS_PRIVATE_KEY_FILE', None)
     print host.public_dns_name
 
     v2_run_playbook("%s" % host.public_dns_name, 'ssh', playbook_path,
                     host.public_dns_name, role, private_key_file)
+
+    # Create an AMI from the instance, then terminate it.
+    playbook_path = os.path.join(BASE_DIR, 'aca-aws', 'create-next-ami.yml')
+    v2_run_playbook("localhost", 'local', playbook_path, inventory_path, role, data={"instance_id": host.id, "timestamp": time.time() })
+
+    # Launch AMIs and update the current/next tags
+    random_id = hashlib.md5("%s" % random.random()).hexdigest()
+    tag_name = "build-%s" % timestamp
+
+    playbook_path = os.path.join(BASE_DIR, 'aca-aws', 'launch-next-ami.yml')
+    v2_run_playbook("localhost", 'local', playbook_path, inventory_path, role, data={"host_count": 2})

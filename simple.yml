@@ -1,6 +1,26 @@
 ---
 - hosts: all
-  
+
   tasks:
-  - name: touch a file to prove we were here
-    shell: echo "Hello world" > hello.txt
+    - name: update apt cache
+      apt: update_cache=yes
+      become: yes
+      become_user: root
+      become_method: sudo
+
+    - name: do the upgrade
+      apt: upgrade=yes
+      become: yes
+      become_user: root
+      become_method: sudo
+
+    - name: install the current apache
+      apt: name=apache2 state=latest
+      become: yes
+      become_user: root
+      become_method: sudo
+    - name: touch a file to prove we were here
+      shell: echo "Hello world" > /var/www/html/index.html
+      become: yes
+      become_user: root
+      become_method: sudo

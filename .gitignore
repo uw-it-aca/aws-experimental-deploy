@@ -10,10 +10,15 @@ vars/app.yml
 /local
 /include
 /bin
+/src
 
 # pip stuff
 /pip-selfcheck.json
 
+
 # vim stuff
 *.swp
 settings.py
+
+# Failed ansible leftovers...
+*.retry

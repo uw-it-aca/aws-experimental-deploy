@@ -3,3 +3,5 @@ AWS_SECRET_ACCESS_KEY = ''
 
 AWS_PRIVATE_KEY_FILE = '/path/to/your/keyfile'
 AWS_REGION = 'us-west-2'
+
+VERBOSITY = 5

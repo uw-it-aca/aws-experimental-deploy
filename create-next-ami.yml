@@ -1,0 +1,36 @@
+---
+  - hosts: localhost
+    connection: local
+    gather_facts: false
+    pre_tasks:
+      - include_vars: vars/app.yml
+    tasks:
+      - name: Find an existing 'next' ami
+        local_action:
+          module: ec2_ami_find
+          region: "{{ aws_region }}"
+          owner: self
+          ami_tags:
+            deployment-state: next
+        register: ami_next
+
+      - debug: msg="AMI NEXT = {{ ami_next.results }}"
+
+      - name: fail out if there's an existing next ami
+        fail: msg="There's already a next AMI"
+        when: ami_next.results
+
+      - name: Save an instance as an AMI
+        local_action:
+            module: ec2_ami
+            region: "{{ aws_region }}"
+            tags: '{"Project":"{{aws_tag_Project}}","Role":"AMI","Use":"{{aws_service_level}}","ResponsibleParty":"{{aws_tag_ResponsibleParty}}", "deployment-state": "next"}'
+            name: "{{ aws_tag_Project }}-{{aws_service_level}}-image-{{ timestamp }}"
+            instance_id: "{{ instance_id }}"
+
+      - name: Terminate the instance
+        local_action:
+            module: ec2
+            region: "{{ aws_region }}"
+            instance_id: "{{ instance_id }}"
+            state: absent
