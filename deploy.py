@@ -80,15 +80,19 @@ def inventory_for_project(args):
     return output
 
 def find_instance_by_tag(tag_name, tag_value):
+    instances = find_instances_by_tag(tag_name, tag_value)
+    if len(instances) > 1:
+        raise Exception("Multiple matches?  Inconceivable!")
+    return instances[0]
+
+def find_instances_by_tag(tag_name, tag_value):
     ec2conn = _get_ec2_conn()
     val = ec2conn.get_all_instances(filters={"tag:%s" % tag_name : tag_value })
     if len(val) > 1:
         raise Exception("Multiple matches?  Inconceivable!")
 
     instances = [i for r in val for i in r.instances]
-    if len(instances) > 1:
-        raise Exception("Multiple matches?  Inconceivable!")
-    return instances[0]
+    return instances
 
 if __name__ == "__main__":
     # In a django management command, the parser is already instantiated.
@@ -105,11 +109,9 @@ if __name__ == "__main__":
     inventory_path = os.path.join(BASE_DIR, 'aca-aws', 'hosts', 'localhost')
     host = 'localhost'
     role = 'appservers'
-#    v2_run_playbook(host, 'local', playbook_path, inventory_path, role,
-#                    extra_tags={ tag_name: random_id })
+    v2_run_playbook(host, 'local', playbook_path, inventory_path, role,
+                    extra_tags={ tag_name: random_id })
 
-    random_id = 'c1798d48ced3bc12fb1dbc3d87ab5dd2'
-    tag_name = 'build-1461368064'
 
     host = find_instance_by_tag(tag_name, random_id)
     playbook_path = os.path.join(BASE_DIR, 'aca-aws', 'simple.yml')
@@ -119,6 +121,13 @@ if __name__ == "__main__":
     v2_run_playbook("%s" % host.public_dns_name, 'ssh', playbook_path,
                     host.public_dns_name, role, private_key_file)
 
-    # Add the host to the ELB (tmp to validate security groups)
-    playbook_path = os.path.join(BASE_DIR, 'aca-aws', 'update-elb.yml')
-    v2_run_playbook("localhost", 'local', playbook_path, inventory_path, role, data={"new_hosts": ["%s" % host.id]})
+    # Create an AMI from the instance, then terminate it.
+    playbook_path = os.path.join(BASE_DIR, 'aca-aws', 'create-next-ami.yml')
+    v2_run_playbook("localhost", 'local', playbook_path, inventory_path, role, data={"instance_id": host.id, "timestamp": time.time() })
+
+    # Launch AMIs and update the current/next tags
+    random_id = hashlib.md5("%s" % random.random()).hexdigest()
+    tag_name = "build-%s" % timestamp
+
+    playbook_path = os.path.join(BASE_DIR, 'aca-aws', 'launch-next-ami.yml')
+    v2_run_playbook("localhost", 'local', playbook_path, inventory_path, role, data={"host_count": 2})

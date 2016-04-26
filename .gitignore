@@ -19,3 +19,6 @@ vars/app.yml
 # vim stuff
 *.swp
 settings.py
+
+# Failed ansible leftovers...
+*.retry
