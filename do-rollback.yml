@@ -1,0 +1,194 @@
+---
+  - hosts: localhost
+    connection: local
+    gather_facts: false
+    user: root
+    pre_tasks:
+      - include_vars: vars/app.yml
+
+    tasks:
+      ### AMI re-tagging
+      ###
+      ### Tag the current as failed
+      - name: Find an existing 'current' ami
+        local_action:
+          module: ec2_ami_find
+          region: "{{ aws_region }}"
+          owner: self
+          ami_tags:
+            deployment-state: current
+        register: ami_current
+
+      - name: Update tags on the current failed ami
+        local_action:
+          module: ec2_tag
+          region: "{{ aws_region }}"
+          resource: "{{ ami_current.results[0].ami_id }}"
+          tags:
+            deployment-state: "failed-deployment"
+        when: ami_current.results
+
+      ###
+      ### Previous is the new current!
+      - name: Find an existing 'previous' ami
+        local_action:
+          module: ec2_ami_find
+          region: "{{ aws_region }}"
+          owner: self
+          ami_tags:
+            deployment-state: previous
+        register: ami_previous
+
+      - name: Update tags on the previous ami
+        local_action:
+          module: ec2_tag
+          region: "{{ aws_region }}"
+          resource: "{{ ami_previous.results[0].ami_id }}"
+          tags:
+            deployment-state: "current"
+        when: ami_previous.results
+
+      ###
+      ### Previous - 2
+      - name: Find an existing 'previous-2' ami
+        local_action:
+          module: ec2_ami_find
+          region: "{{ aws_region }}"
+          owner: self
+          ami_tags:
+            deployment-state: previous-2
+        register: ami_previous_2
+
+      - name: Update tags on the _2 ami (if it exists)
+        local_action:
+          module: ec2_tag
+          region: "{{ aws_region }}"
+          resource: "{{ ami_previous_2.results[0].ami_id }}"
+          tags:
+            deployment-state: "previous"
+        when: ami_previous_2.results
+
+      ###
+      ### Previous - 3
+      - name: Find an existing 'previous-3' ami
+        local_action:
+          module: ec2_ami_find
+          region: "{{ aws_region }}"
+          owner: self
+          ami_tags:
+            deployment-state: previous-3
+        register: ami_previous_3
+
+      - name: Update tags on the _3 ami (if it exists)
+        local_action:
+          module: ec2_tag
+          region: "{{ aws_region }}"
+          resource: "{{ ami_previous_3.results[0].ami_id }}"
+          tags:
+            deployment-state: "previous-2"
+        when: ami_previous_3.results
+
+      ###
+      ### Previous - 4
+      - name: Find an existing 'previous-4' ami
+        local_action:
+          module: ec2_ami_find
+          region: "{{ aws_region }}"
+          owner: self
+          ami_tags:
+            deployment-state: previous-4
+        register: ami_previous_4
+
+      - name: Update tags on the _4 ami (if it exists)
+        local_action:
+          module: ec2_tag
+          region: "{{ aws_region }}"
+          resource: "{{ ami_previous_4.results[0].ami_id }}"
+          tags:
+            deployment-state: "previous-3"
+        when: ami_previous_4.results
+
+      ###
+      ### Previous - 5
+      - name: Find an existing 'previous-5' ami
+        local_action:
+          module: ec2_ami_find
+          region: "{{ aws_region }}"
+          owner: self
+          ami_tags:
+            deployment-state: previous-5
+        register: ami_previous_5
+
+      - name: Update tags on the _5 ami (if it exists)
+        local_action:
+          module: ec2_tag
+          region: "{{ aws_region }}"
+          resource: "{{ ami_previous_5.results[0].ami_id }}"
+          tags:
+            deployment-state: "previous-4"
+        when: ami_previous_5.results
+
+      - include: playbooks/create-vpc.yml
+      - include: playbooks/instance-sg.yml
+      - include: playbooks/app-subnet.yml
+      - name: Provision ec2 box
+        local_action:
+          module: ec2
+          key_name: "{{ aws_keypair }}"
+          group_id: "{{ ec2_sg.group_id }}"
+          instance_type: "{{ ec2_instance_type }}"
+          image: "{{ ami_previous.results[0].ami_id }}"
+          vpc_subnet_id: "{{ [ app_subnet1.subnet.id, app_subnet2.subnet.id ]|random }}"
+          region: "{{ aws_region }}"
+          instance_tags: '{"Project":"{{aws_tag_Project}}","Role":"App","Use":"{{aws_service_level}}","ResponsibleParty":"{{aws_tag_ResponsibleParty}}"{{ tag_hash_values }}}'
+          assign_public_ip: yes
+          wait: true
+          count: "{{ host_count }}"
+          volumes:
+          - device_name: /dev/sda1
+            device_type: gp2
+            volume_size: "{{ ec2_volume_size }}"
+            delete_on_termination: true
+        register: new_hosts
+
+      - name: Wait for the instance to boot by checking ssh
+        wait_for: host={{ item.public_ip }} port=22 delay=60 timeout=600 state=started
+        with_items: new_hosts.instances
+
+#      - debug: msg="hosts = {{ new_hosts }}"
+      - name: find the existing hosts on the ELB
+        local_action:
+          module: ec2_elb_facts
+          names: "{{ aws_tag_Project }}-{{ aws_service_level }}-elb"
+          region: "{{ aws_region }}"
+        register: elb_facts
+
+
+      - debug: msg="ELB = {{ elb_facts.elbs[0].instances }}"
+
+      - name: Add hosts to the ELB
+        local_action:
+          region: "{{ aws_region }}"
+          module: ec2_elb
+          instance_id: "{{ item }}"
+          ec2_elbs: "{{ aws_tag_Project }}-{{ aws_service_level }}-elb"
+          state: present
+        with_items: "{{ new_hosts.instance_ids }}"
+
+
+      - name: Remove old hosts from the ELB
+        local_action:
+          module: ec2_elb
+          region: "{{ aws_region }}"
+          instance_id: "{{ item }}"
+          state: absent
+        with_items: "{{ elb_facts.elbs[0].instances }}"
+
+      - name: Tag the old hosts as failed
+        local_action:
+          module: ec2_tag
+          region: "{{ aws_region }}"
+          resource: "{{ item }}"
+          tags:
+            failed-deployment: "yes"
+        with_items: "{{ elb_facts.elbs[0].instances }}"
