@@ -1,6 +1,6 @@
 To run:
 
-  Copy vars/app-sample.yml to vars/app.yml, and fill it in.
+  Copy playbooks/vars/app-sample.yml to playbooks/vars/app.yml, and fill it in.
 
   Copy sample.settings.py to settings.py, and fill it in.
 

@@ -6,7 +6,7 @@ import os
 
 
 if __name__ == "__main__":
-    playbook_path = os.path.join(BASE_DIR, 'aca-aws', 'provision-infrastructure.yml')
+    playbook_path = os.path.join(BASE_DIR, 'aca-aws', 'playbooks', 'provision-infrastructure.yml')
     inventory_path = os.path.join(BASE_DIR, 'aca-aws', 'hosts', 'localhost')
     role = 'infrastructure'
 

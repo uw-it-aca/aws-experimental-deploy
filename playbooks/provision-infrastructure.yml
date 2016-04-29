@@ -6,7 +6,7 @@
       - include_vars: vars/app.yml
 
     tasks:
-      - include: playbooks/create-vpc.yml
+      - include: create-vpc.yml
       - name: Create Elasticache subnet in AZ1
         local_action:
           module: ec2_vpc_subnet
@@ -51,9 +51,9 @@
           cidr: 10.1.6.0/24
         register: db_subnet2
 
-      - include: playbooks/app-subnet.yml
+      - include: app-subnet.yml
 
-      - include: playbooks/instance-sg.yml
+      - include: instance-sg.yml
 
       - name: Create a security group for elasticache
         local_action:

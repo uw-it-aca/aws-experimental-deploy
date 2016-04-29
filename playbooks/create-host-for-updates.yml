@@ -18,9 +18,9 @@
             deployment-state: current
         register: ami_current
 
-      - include: playbooks/create-vpc.yml
-      - include: playbooks/instance-sg.yml
-      - include: playbooks/app-subnet.yml
+      - include: create-vpc.yml
+      - include: instance-sg.yml
+      - include: app-subnet.yml
 
       - debug: msg="Current = {{ ami_current }}"
       - name: Provision ec2 box
