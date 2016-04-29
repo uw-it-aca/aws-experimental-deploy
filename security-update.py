@@ -32,8 +32,13 @@ if __name__ == "__main__":
     stats = v2_run_playbook("%s" % host.public_dns_name, 'ssh', playbook_path,
                             host.public_dns_name, role,
                             data={"instance_id": host.id, "source_ami": host.image_id, "timestamp": time.time(), "host_count": 2 })
-    print "Stats (updates): ", stats.processed, stats.changed
 
-    playbook_path = os.path.join(BASE_DIR, 'aca-aws', 'launch-next-ami.yml')
-    inventory_path = os.path.join(BASE_DIR, 'aca-aws', 'hosts', 'localhost')
-    v2_run_playbook("localhost", 'local', playbook_path, inventory_path, role, data={"host_count": 2})
+    skipped_count = 0
+    for host in stats.skipped:
+        skipped_count = stats.skipped[host]
+
+    # Steps are skipped if there are no changes in the upgrade step
+    if skipped_count == 0:
+        playbook_path = os.path.join(BASE_DIR, 'aca-aws', 'launch-next-ami.yml')
+        inventory_path = os.path.join(BASE_DIR, 'aca-aws', 'hosts', 'localhost')
+        v2_run_playbook("localhost", 'local', playbook_path, inventory_path, role, data={"host_count": 2})

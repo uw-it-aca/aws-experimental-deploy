@@ -35,12 +35,15 @@
         ami_tags:
           deployment-state: next
       register: ami_next
+      when: apt_upgrade.changed
 
     - debug: msg="AMI NEXT = {{ ami_next.results }}"
+      when: apt_upgrade.changed
 
     - name: fail out if there's an existing next ami
       fail: msg="There's already a next AMI"
       when: ami_next.results
+      when: apt_upgrade.changed
 
     - name: Save an instance as an AMI
       local_action:
@@ -49,6 +52,7 @@
           tags: '{"Project":"{{aws_tag_Project}}","Role":"AMI","Use":"{{aws_service_level}}","ResponsibleParty":"{{aws_tag_ResponsibleParty}}", "deployment-state": "next", "security-update": "yes", "from-ami": "{{ source_ami }}"}'
           name: "{{ aws_tag_Project }}-{{aws_service_level}}-image-{{ timestamp }}"
           instance_id: "{{ instance_id }}"
+      when: apt_upgrade.changed
 
     - name: Terminate the instance
       local_action:
