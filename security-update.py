@@ -16,7 +16,7 @@ if __name__ == "__main__":
     tag_name = "build-%s" % timestamp
 
     print "TN: ", tag_name, random_id
-    playbook_path = os.path.join(BASE_DIR, 'aca-aws', 'create-host-for-updates.yml')
+    playbook_path = os.path.join(BASE_DIR, 'aca-aws', 'playbooks', 'create-host-for-updates.yml')
     inventory_path = os.path.join(BASE_DIR, 'aca-aws', 'hosts', 'localhost')
     role = 'infrastructure'
     stats = v2_run_playbook('localhost', 'local', playbook_path, inventory_path, role,
@@ -24,7 +24,7 @@ if __name__ == "__main__":
     print "Stats: ", stats
 
     host = find_instance_by_tag(tag_name, random_id)
-    playbook_path = os.path.join(BASE_DIR, 'aca-aws', 'run-security-updates.yml')
+    playbook_path = os.path.join(BASE_DIR, 'aca-aws', 'playbooks', 'run-security-updates.yml')
     private_key_file = getattr(settings, 'AWS_PRIVATE_KEY_FILE', None)
     print host.public_dns_name
     print host.id
@@ -39,6 +39,6 @@ if __name__ == "__main__":
 
     # Steps are skipped if there are no changes in the upgrade step
     if skipped_count == 0:
-        playbook_path = os.path.join(BASE_DIR, 'aca-aws', 'launch-next-ami.yml')
+        playbook_path = os.path.join(BASE_DIR, 'aca-aws', 'playbooks', 'launch-next-ami.yml')
         inventory_path = os.path.join(BASE_DIR, 'aca-aws', 'hosts', 'localhost')
         v2_run_playbook("localhost", 'local', playbook_path, inventory_path, role, data={"host_count": 2})

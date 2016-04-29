@@ -106,7 +106,7 @@ if __name__ == "__main__":
     random_id = hashlib.md5("%s" % random.random()).hexdigest()
     tag_name = "build-%s" % timestamp
 
-    playbook_path = os.path.join(BASE_DIR, 'aca-aws', 'provision-ec2.yml')
+    playbook_path = os.path.join(BASE_DIR, 'aca-aws', 'playbooks', 'provision-ec2.yml')
     inventory_path = os.path.join(BASE_DIR, 'aca-aws', 'hosts', 'localhost')
     host = 'localhost'
     role = 'appservers'
@@ -115,7 +115,7 @@ if __name__ == "__main__":
 
 
     host = find_instance_by_tag(tag_name, random_id)
-    playbook_path = os.path.join(BASE_DIR, 'aca-aws', 'simple.yml')
+    playbook_path = os.path.join(BASE_DIR, 'aca-aws', 'playbooks', 'simple.yml')
     private_key_file = getattr(settings, 'AWS_PRIVATE_KEY_FILE', None)
     print host.public_dns_name
 
@@ -123,12 +123,12 @@ if __name__ == "__main__":
                     host.public_dns_name, role, private_key_file)
 
     # Create an AMI from the instance, then terminate it.
-    playbook_path = os.path.join(BASE_DIR, 'aca-aws', 'create-next-ami.yml')
+    playbook_path = os.path.join(BASE_DIR, 'aca-aws', 'playbooks', 'create-next-ami.yml')
     v2_run_playbook("localhost", 'local', playbook_path, inventory_path, role, data={"instance_id": host.id, "timestamp": time.time() })
 
     # Launch AMIs and update the current/next tags
     random_id = hashlib.md5("%s" % random.random()).hexdigest()
     tag_name = "build-%s" % timestamp
 
-    playbook_path = os.path.join(BASE_DIR, 'aca-aws', 'launch-next-ami.yml')
+    playbook_path = os.path.join(BASE_DIR, 'aca-aws', 'playbooks', 'launch-next-ami.yml')
     v2_run_playbook("localhost", 'local', playbook_path, inventory_path, role, data={"host_count": 2})

@@ -1,6 +1,7 @@
 ec2_vars/appservers.yml
 ec2_vars/infrastructure.yml
 vars/app.yml
+playbooks/vars/app.yml
 
 # Python stuff
 *.pyc
