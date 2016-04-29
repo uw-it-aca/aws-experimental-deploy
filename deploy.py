@@ -60,6 +60,7 @@ def v2_run_playbook(hostnames, connection, playbook_path, inventory_path, role, 
     )
 
     stats = runner.run()
+    return stats
 
 def _get_ec2_conn():
     ec2conn = ec2.connect_to_region(settings.AWS_REGION,

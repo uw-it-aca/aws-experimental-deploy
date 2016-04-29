@@ -1,0 +1,62 @@
+---
+- hosts: all
+  gather_facts: false
+  pre_tasks:
+    - include_vars: vars/app.yml
+
+  tasks:
+    - debug: msg="OK OK"
+
+    - name: update apt cache
+      apt: update_cache=yes
+      become: yes
+      become_user: root
+      become_method: sudo
+      register: update_cache
+
+    - debug: msg="Cache update = {{ update_cache }}"
+    - debug: msg="Cache changed = {{ update_cache.changed }}"
+
+    - name: do the upgrade
+      apt: upgrade=yes
+      become: yes
+      become_user: root
+      become_method: sudo
+      register: apt_upgrade
+
+    - debug: msg="upgrade status = {{ apt_upgrade }}"
+    - debug: msg="upgrade changed = {{ apt_upgrade.changed }}"
+
+    - name: Find an existing 'next' ami
+      local_action:
+        module: ec2_ami_find
+        region: "{{ aws_region }}"
+        owner: self
+        ami_tags:
+          deployment-state: next
+      register: ami_next
+      when: apt_upgrade.changed
+
+    - debug: msg="AMI NEXT = {{ ami_next.results }}"
+      when: apt_upgrade.changed
+
+    - name: fail out if there's an existing next ami
+      fail: msg="There's already a next AMI"
+      when: ami_next.results
+      when: apt_upgrade.changed
+
+    - name: Save an instance as an AMI
+      local_action:
+          module: ec2_ami
+          region: "{{ aws_region }}"
+          tags: '{"Project":"{{aws_tag_Project}}","Role":"AMI","Use":"{{aws_service_level}}","ResponsibleParty":"{{aws_tag_ResponsibleParty}}", "deployment-state": "next", "security-update": "yes", "from-ami": "{{ source_ami }}"}'
+          name: "{{ aws_tag_Project }}-{{aws_service_level}}-image-{{ timestamp }}"
+          instance_id: "{{ instance_id }}"
+      when: apt_upgrade.changed
+
+    - name: Terminate the instance
+      local_action:
+          module: ec2
+          region: "{{ aws_region }}"
+          instance_id: "{{ instance_id }}"
+          state: absent
