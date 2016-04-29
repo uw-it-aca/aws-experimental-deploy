@@ -14,8 +14,8 @@
           az: "{{ aws_availability_zone1 }}"
           state: present
           vpc_id: "{{ vpc.vpc.id }}"
-          resource_tags: '{"Project":"{{aws_tag_Project}}","Role":"Subnet","Use":"{{aws_service_level}}","ResponsibleParty":"{{aws_tag_ResponsibleParty}}"}'
-          cidr: 10.1.4.0/24
+          resource_tags: '{"Project":"{{aws_tag_Project}}","Role":"Subnet","Use":"{{aws_service_level}}","ResponsibleParty":"{{aws_tag_ResponsibleParty}}", "Application": "{{ aws_tag_Application }}"}'
+          cidr: "{{ subnets.elasticache_subnet1 }}"
         register: elasticache_subnet1
 
       - name: Create Elasticache subnet in AZ2
@@ -25,8 +25,8 @@
           az: "{{ aws_availability_zone2 }}"
           state: present
           vpc_id: "{{ vpc.vpc.id }}"
-          resource_tags: '{"Project":"{{aws_tag_Project}}","Role":"Memcached","Use":"{{aws_service_level}}","ResponsibleParty":"{{aws_tag_ResponsibleParty}}"}'
-          cidr: 10.1.3.0/24
+          resource_tags: '{"Project":"{{aws_tag_Project}}","Role":"Memcached","Use":"{{aws_service_level}}","ResponsibleParty":"{{aws_tag_ResponsibleParty}}", "Application": "{{ aws_tag_Application }}"}'
+          cidr: "{{ subnets.elasticache_subnet2 }}"
         register: elasticache_subnet2
 
       - name: Create DB subnet1
@@ -36,8 +36,8 @@
           az: "{{ aws_availability_zone1 }}"
           state: present
           vpc_id: "{{ vpc.vpc.id }}"
-          resource_tags: '{"Project":"{{aws_tag_Project}}","Role":"Subnet","Use":"{{aws_service_level}}","ResponsibleParty":"{{aws_tag_ResponsibleParty}}"}'
-          cidr: 10.1.5.0/24
+          resource_tags: '{"Project":"{{aws_tag_Project}}","Role":"Subnet","Use":"{{aws_service_level}}","ResponsibleParty":"{{aws_tag_ResponsibleParty}}", "Application": "{{ aws_tag_Application }}"}'
+          cidr: "{{ subnets.db_subnet1 }}"
         register: db_subnet1
 
       - name: Create DB subnet2
@@ -47,8 +47,8 @@
           az: "{{ aws_availability_zone2 }}"
           state: present
           vpc_id: "{{ vpc.vpc.id }}"
-          resource_tags: '{"Project":"{{aws_tag_Project}}","Role":"Subnet","Use":"{{aws_service_level}}","ResponsibleParty":"{{aws_tag_ResponsibleParty}}"}'
-          cidr: 10.1.6.0/24
+          resource_tags: '{"Project":"{{aws_tag_Project}}","Role":"Subnet","Use":"{{aws_service_level}}","ResponsibleParty":"{{aws_tag_ResponsibleParty}}", "Application": "{{ aws_tag_Application }}"}'
+          cidr: "{{ subnets.db_subnet2 }}"
         register: db_subnet2
 
       - include: app-subnet.yml
@@ -61,13 +61,18 @@
           state: present
           region: "{{ aws_region }}"
           description: App hosts to elasticache
-          name: App to Elasticache
+          name: App to Elasticache {{ aws_tag_Project }} {{ aws_tag_Application }} {{ aws_service_level }}
           vpc_id: "{{ vpc.vpc.id }}"
           rules:
             - proto: tcp
               from_port: 11211
               to_port: 11211
-              cidr_ip: 10.1.9.0/24
+              cidr_ip: "{{ subnets.app_subnet1 }}"
+            - proto: tcp
+              from_port: 11211
+              to_port: 11211
+              cidr_ip: "{{ subnets.app_subnet2 }}"
+
         register: elasticache_sg
 
       - name: Create a security group for RDS
@@ -75,31 +80,36 @@
           module: ec2_group
           state: present
           region: "{{ aws_region }}"
-          description: App hosts to RDS
+          description: App hosts to RDS {{ aws_tag_Project }} {{ aws_tag_Application }} {{ aws_service_level }}
           name: App to RDS
           vpc_id: "{{ vpc.vpc.id }}"
           rules:
             - proto: tcp
               from_port: 3306
               to_port: 3306
-              cidr_ip: 10.1.9.0/24
-        register: rds_sg
+              cidr_ip: "{{ subnets.app_subnet1 }}"
+            - proto: tcp
+              from_port: 3306
+              to_port: 3306
+              cidr_ip: "{{ subnets.app_subnet2 }}"
 
-      - name: upload the certificate needed by the ELB
-        local_action:
-          module: iam_cert
-          name: "cert_for_{{ aws_tag_Project }}_{{ aws_service_level }}"
-          state: present
-          cert: "{{ files_root }}/certs/{{ cert_name }}"
-          key: "{{ files_root }}/certs/{{ cert_key_name }}"
-        register: https_cert
+        register: rds_sg
+#
+#      - name: upload the certificate needed by the ELB
+#        local_action:
+#          module: iam_cert
+#          name: "cert_for_{{ aws_tag_Project }}_{{ aws_service_level }}_{{ aws_tag_Application }}"
+#          state: present
+#          cert: "{{ files_root }}/certs/{{ cert_name }}"
+#          key: "{{ files_root }}/certs/{{ cert_key_name }}"
+#        register: https_cert
       - name: Create a security group for the ELB
         local_action:
           module: ec2_group
           state: present
           region: "{{ aws_region }}"
           description: Public to ELB
-          name: Public to ELB
+          name: Public to ELB {{ aws_tag_Project }} {{ aws_tag_Application }} {{ aws_service_level }}
           vpc_id: "{{ vpc.vpc.id }}"
           rules:
             - proto: tcp
@@ -118,16 +128,16 @@
             module: ec2_elb_lb
             region: "{{ aws_region }}"
             state: present
-            name: "{{ aws_tag_Project }}-{{ aws_service_level }}-elb"
-            security_group_names: "Public to ELB"
+            name: "{{ aws_tag_Project }}-{{ aws_tag_Application }}-{{ aws_service_level }}-elb"
+            security_group_names: "Public to ELB {{ aws_tag_Project }} {{ aws_tag_Application }} {{ aws_service_level }}"
             listeners:
               - protocol: http
                 load_balancer_port: 80
                 instance_port: 80
-              - protocol: https
-                load_balancer_port: 443
-                instance_port: 443
-                ssl_certificate_id: "arn:aws:iam::{{ aws_account_id }}:server-certificate/{{ https_cert.name }}"
+#              - protocol: https
+#                load_balancer_port: 443
+#                instance_port: 443
+#                ssl_certificate_id: "arn:aws:iam::{{ aws_account_id }}:server-certificate/{{ https_cert.name }}"
             subnets:
               - "{{ app_subnet1.subnet.id }}"
               - "{{ app_subnet2.subnet.id }}"
@@ -137,7 +147,7 @@
           module: elasticache_subnet_group
           state: present
           region: "{{ aws_region }}"
-          name: subnets-for-elasticache
+          name: subnets-for-elasticache-{{ aws_tag_Project }}-{{ aws_tag_Application }}-{{ aws_service_level }}
           description: subnets for automated elasticache deployment
           subnets:
             - "{{ elasticache_subnet1.subnet.id }}"
@@ -149,7 +159,7 @@
           module: rds_subnet_group
           state: present
           region: "{{ aws_region }}"
-          name: subnets-for-rds
+          name: subnets-for-rds-{{ aws_tag_Project }}-{{ aws_tag_Application }}-{{ aws_service_level }}
           description: subnets for automated rds deployment
           subnets:
             - "{{ db_subnet1.subnet.id }}"
@@ -164,8 +174,8 @@
           cache_port: 11211
           num_nodes: 1
           # Must be under 20 chars
-          name: "{{ aws_service_level }}-ec"
-          cache_subnet_group: "subnets-for-elasticache"
+          name: "{{ aws_tag_Application }}-{{ aws_service_level }}-ec"
+          cache_subnet_group: "subnets-for-elasticache-{{ aws_tag_Project }}-{{ aws_tag_Application }}-{{ aws_service_level }}"
           cache_security_groups: []
           security_group_ids: "{{ elasticache_sg.group_id }}"
           wait: true
@@ -183,7 +193,7 @@
           password: "{{ rds_master_password }}"
           username: "{{ rds_master_username }}"
           region: "{{ aws_region }}"
-          subnet: "subnets-for-rds"
+          subnet: "subnets-for-rds-{{ aws_tag_Project }}-{{ aws_tag_Application }}-{{ aws_service_level }}"
           vpc_security_groups: "{{ rds_sg.group_id }}"
-          tags: '{"Project":"{{aws_tag_Project}}","Role":"Database","Use":"{{aws_service_level}}","ResponsibleParty":"{{aws_tag_ResponsibleParty}}"}'
+          tags: '{"Project":"{{aws_tag_Project}}","Role":"Database","Use":"{{aws_service_level}}","ResponsibleParty":"{{aws_tag_ResponsibleParty}}", "Application": "{{ aws_tag_Application }}"}'
           wait: true

@@ -7,7 +7,7 @@
 """
 # DO NOT change the order of these imports, there's a circular dependency in
 # ansible 1.9 that will cause things to break
-from util import set_ansible_display
+from util import set_ansible_display, _get_ec2_conn
 display = set_ansible_display()
 
 from ansible.playbook import Playbook
@@ -61,12 +61,6 @@ def v2_run_playbook(hostnames, connection, playbook_path, inventory_path, role, 
 
     stats = runner.run()
     return stats
-
-def _get_ec2_conn():
-    ec2conn = ec2.connect_to_region(settings.AWS_REGION,
-                                    aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
-                                    aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY)
-    return ec2conn
 
 def inventory_for_project(args):
     ec2conn = _get_ec2_conn()

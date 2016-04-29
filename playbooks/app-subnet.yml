@@ -9,7 +9,7 @@
     state: present
     vpc_id: "{{ vpc.vpc.id }}"
     resource_tags: '{"Project":"{{aws_tag_Project}}","Role":"Subnet","Use":"{{aws_service_level}}","ResponsibleParty":"{{aws_tag_ResponsibleParty}}"}'
-    cidr: 10.1.9.0/24
+    cidr: "{{ subnets.app_subnet1 }}"
   register: app_subnet1
 
 - name: Create App subnet2
@@ -20,7 +20,7 @@
     state: present
     vpc_id: "{{ vpc.vpc.id }}"
     resource_tags: '{"Project":"{{aws_tag_Project}}","Role":"Subnet","Use":"{{aws_service_level}}","ResponsibleParty":"{{aws_tag_ResponsibleParty}}"}'
-    cidr: 10.1.10.0/24
+    cidr: "{{ subnets.app_subnet2 }}"
   register: app_subnet2
 
 - name: Create routes to app subnets
