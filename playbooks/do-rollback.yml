@@ -159,7 +159,7 @@
       - name: find the existing hosts on the ELB
         local_action:
           module: ec2_elb_facts
-          names: "{{ aws_tag_Project }}-{{ aws_service_level }}-elb"
+          names: "{{ aws_tag_Project }}-{{ aws_tag_Application }}-{{ aws_service_level }}-elb"
           region: "{{ aws_region }}"
         register: elb_facts
 
@@ -171,7 +171,7 @@
           region: "{{ aws_region }}"
           module: ec2_elb
           instance_id: "{{ item }}"
-          ec2_elbs: "{{ aws_tag_Project }}-{{ aws_service_level }}-elb"
+          ec2_elbs: "{{ aws_tag_Project }}-{{ aws_tag_Application }}-{{ aws_service_level }}-elb"
           state: present
         with_items: "{{ new_hosts.instance_ids }}"
 

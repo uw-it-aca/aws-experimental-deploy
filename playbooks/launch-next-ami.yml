@@ -17,6 +17,9 @@
           owner: self
           ami_tags:
             deployment-state: previous-5
+            Project: "{{ aws_tag_Project }}"
+            Application: "{{ aws_tag_Application }}"
+            Use: "{{ aws_service_level }}"
         register: ami_previous_5
 
       - name: Remove the _5 ami (if it exists)
@@ -37,6 +40,9 @@
           owner: self
           ami_tags:
             deployment-state: previous-4
+            Project: "{{ aws_tag_Project }}"
+            Application: "{{ aws_tag_Application }}"
+            Use: "{{ aws_service_level }}"
         register: ami_previous_4
 
       - name: Update tags on the _4 ami (if it exists)
@@ -57,6 +63,9 @@
           owner: self
           ami_tags:
             deployment-state: previous-3
+            Project: "{{ aws_tag_Project }}"
+            Application: "{{ aws_tag_Application }}"
+            Use: "{{ aws_service_level }}"
         register: ami_previous_3
 
       - name: Update tags on the _3 ami (if it exists)
@@ -77,6 +86,9 @@
           owner: self
           ami_tags:
             deployment-state: previous-2
+            Project: "{{ aws_tag_Project }}"
+            Application: "{{ aws_tag_Application }}"
+            Use: "{{ aws_service_level }}"
         register: ami_previous_2
 
       - name: Update tags on the _2 ami (if it exists)
@@ -97,6 +109,9 @@
           owner: self
           ami_tags:
             deployment-state: previous
+            Project: "{{ aws_tag_Project }}"
+            Application: "{{ aws_tag_Application }}"
+            Use: "{{ aws_service_level }}"
         register: ami_previous
 
       - name: Update tags on the previous ami (if it exists)
@@ -120,6 +135,9 @@
           owner: self
           ami_tags:
             deployment-state: current
+            Project: "{{ aws_tag_Project }}"
+            Application: "{{ aws_tag_Application }}"
+            Use: "{{ aws_service_level }}"
         register: ami_current
 
       - name: Update tags on the current ami (if it exists)
@@ -140,6 +158,9 @@
           owner: self
           ami_tags:
             deployment-state: next
+            Project: "{{ aws_tag_Project }}"
+            Application: "{{ aws_tag_Application }}"
+            Use: "{{ aws_service_level }}"
         register: ami_next
 
       - name: Update tags on the next ami
@@ -160,7 +181,7 @@
           image: "{{ ami_next.results[0].ami_id }}"
           vpc_subnet_id: "{{ [ app_subnet1.subnet.id, app_subnet2.subnet.id ]|random }}"
           region: "{{ aws_region }}"
-          instance_tags: '{"Project":"{{aws_tag_Project}}","Role":"App","Use":"{{aws_service_level}}","ResponsibleParty":"{{aws_tag_ResponsibleParty}}"{{ tag_hash_values }}}'
+          instance_tags: '{"Project":"{{aws_tag_Project}}","Role":"App","Use":"{{aws_service_level}}","ResponsibleParty":"{{aws_tag_ResponsibleParty}}", "Application": "{{ aws_tag_Application }}"{{ tag_hash_values }}}'
           assign_public_ip: yes
           wait: true
           count: "{{ host_count }}"
@@ -179,7 +200,7 @@
       - name: find the existing hosts on the ELB
         local_action:
           module: ec2_elb_facts
-          names: "{{ aws_tag_Project }}-{{ aws_service_level }}-elb"
+          names: "{{ aws_tag_Project }}-{{ aws_tag_Application }}-{{ aws_service_level }}-elb"
           region: "{{ aws_region }}"
         register: elb_facts
 
@@ -193,7 +214,7 @@
           region: "{{ aws_region }}"
           module: ec2_elb
           instance_id: "{{ item }}"
-          ec2_elbs: "{{ aws_tag_Project }}-{{ aws_service_level }}-elb"
+          ec2_elbs: "{{ aws_tag_Project }}-{{ aws_tag_Application }}-{{ aws_service_level }}-elb"
           state: present
         with_items: "{{ new_hosts.instance_ids }}"
 

@@ -7,7 +7,7 @@
 """
 # DO NOT change the order of these imports, there's a circular dependency in
 # ansible 1.9 that will cause things to break
-from util import set_ansible_display, _get_ec2_conn
+from util import set_ansible_display, _get_ec2_conn, get_args, get_cidr_blocks
 display = set_ansible_display()
 
 from ansible.playbook import Playbook
@@ -91,21 +91,23 @@ def find_instances_by_tag(tag_name, tag_value):
 
 if __name__ == "__main__":
     # In a django management command, the parser is already instantiated.
-    parser = argparse.ArgumentParser(description='The project to deploy.')
+    args = get_args()
 
-    parser.add_argument('project', nargs='?')
-    args = parser.parse_args()
+    project = args.project
+    app = args.app
+    use = args.use
 
     timestamp = int(time.time())
     random_id = hashlib.md5("%s" % random.random()).hexdigest()
     tag_name = "build-%s" % timestamp
 
+    cidr_blocks = get_cidr_blocks(project, app, use)
     playbook_path = os.path.join(BASE_DIR, 'aca-aws', 'playbooks', 'provision-ec2.yml')
     inventory_path = os.path.join(BASE_DIR, 'aca-aws', 'hosts', 'localhost')
     host = 'localhost'
     role = 'appservers'
     v2_run_playbook(host, 'local', playbook_path, inventory_path, role,
-                    extra_tags={ tag_name: random_id })
+                    extra_tags={ tag_name: random_id }, data={"subnets": cidr_blocks, "aws_tag_Application": app, "aws_tag_Project": project, "aws_service_level": use })
 
 
     host = find_instance_by_tag(tag_name, random_id)
@@ -118,11 +120,11 @@ if __name__ == "__main__":
 
     # Create an AMI from the instance, then terminate it.
     playbook_path = os.path.join(BASE_DIR, 'aca-aws', 'playbooks', 'create-next-ami.yml')
-    v2_run_playbook("localhost", 'local', playbook_path, inventory_path, role, data={"instance_id": host.id, "timestamp": time.time() })
+    v2_run_playbook("localhost", 'local', playbook_path, inventory_path, role, data={"instance_id": host.id, "timestamp": time.time(), "subnets": cidr_blocks, "aws_tag_Application": app, "aws_tag_Project": project, "aws_service_level": use })
 
     # Launch AMIs and update the current/next tags
     random_id = hashlib.md5("%s" % random.random()).hexdigest()
     tag_name = "build-%s" % timestamp
 
     playbook_path = os.path.join(BASE_DIR, 'aca-aws', 'playbooks', 'launch-next-ami.yml')
-    v2_run_playbook("localhost", 'local', playbook_path, inventory_path, role, data={"host_count": 2})
+    v2_run_playbook("localhost", 'local', playbook_path, inventory_path, role, data={"host_count": 2, "subnets": cidr_blocks, "aws_tag_Application": app, "aws_tag_Project": project, "aws_service_level": use})

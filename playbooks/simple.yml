@@ -20,7 +20,7 @@
       become_user: root
       become_method: sudo
     - name: touch a file to prove we were here
-      shell: echo "Hello world" > /var/www/html/index.html
+      shell: echo "Hello world - {{ aws_tag_Application }}" > /var/www/html/index.html
       become: yes
       become_user: root
       become_method: sudo

@@ -24,7 +24,7 @@
         local_action:
             module: ec2_ami
             region: "{{ aws_region }}"
-            tags: '{"Project":"{{aws_tag_Project}}","Role":"AMI","Use":"{{aws_service_level}}","ResponsibleParty":"{{aws_tag_ResponsibleParty}}", "deployment-state": "next"}'
+            tags: '{"Project":"{{aws_tag_Project}}","Role":"AMI","Use":"{{aws_service_level}}","ResponsibleParty":"{{aws_tag_ResponsibleParty}}", "Application": "{{ aws_tag_Application }}", "deployment-state": "next"}'
             name: "{{ aws_tag_Project }}-{{aws_service_level}}-image-{{ timestamp }}"
             instance_id: "{{ instance_id }}"
 
